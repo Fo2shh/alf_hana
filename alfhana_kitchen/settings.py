@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-)&p@*j2$jh9$lpf#^s*8#g16*_bn2u0_i&ja2+4wwc&#!^v_qs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -139,3 +139,11 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 # Mapbox API Key
 MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiZm94bWFuNTUiLCJhIjoiY211eGo0MmMzMDVvdDJ4c2ptMmlsNzltcSJ9.AVo6wm5P1oe1uIL5miYmuA'
+
+# CSRF Trusted Origins - for HTTPS/localhost/production
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://localhost:8000',
+    'https://127.0.0.1:8000',
+]
