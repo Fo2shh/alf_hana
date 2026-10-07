@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}تعديل الطلب #{{ order.daily_serial }} - مطبخ الف هنا{% endblock %}
+
+{% block extra_css %}
+<style>
+    .order-item {
+        margin-bottom: 0.5rem;
+    }
+
+    /* تكبير ارتفاع مربع الاختيار المتعدد select2 */
+    .select2-container--default .select2-selection--multiple {
+        min-height: 120px !important;
+        padding: 8px !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: block !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        margin: 4px 4px 4px 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="order-page">
+        <div class="card order-card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> تعديل الطلب #{{ order.daily_serial }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="orderForm" class="order-form-grid">
+                    {% csrf_token %}
+                    
+                    <!-- اختيار العميل -->
+                    <div class="mb-4 order-field customer-field">
+                        <label class="form-label fw-bold">العميل</label>
+                        <select class="form-select select2" id="customerSelect" name="customer_id">
+                            <option value="">اختر عميلاً...</option>
+                            <option value="new">+ عميل جديد</option>
+                            {% if order.customer %}
+                                <option value="{{ order.customer.id }}" selected>{{ order.customer.name }} - {{ order.customer.phone }}</option>
+                            {% endif %}
+                            {% for customer in customers %}
+                                {% if customer.id != order.customer.id %}
+                                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- بيانات العميل الجديد -->
+                    <div id="newCustomerFields" class="mb-4 order-field order-field-wide {% if order.customer %}d-none{% endif %}">
+                        <div class="new-customer-fields">
+                                <h6 class="fw-bold mb-3">بيانات العميل</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">الاسم</label>
+                                        <input type="text" class="form-control" id="customerName" name="customer_name" value="{% if not order.customer %}{{ order.customer_name }}{% endif %}">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">رقم الهاتف</label>
+                                        <input type="text" class="form-control" id="customerPhone" name="customer_phone" value="{% if not order.customer %}{{ order.customer_phone }}{% endif %}">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">العنوان</label>
+                                        <input type="text" class="form-control" id="customerAddress" name="customer_address" value="{% if not order.customer %}{{ order.customer_address }}{% endif %}">
+                                    </div>
+                                </div>
+                        </div>
+                    </div>
+                    
+                    <!-- اختيار الأصناف -->
+                    <div class="mb-4 order-field order-field-wide menu-field">
+                        <label class="form-label fw-bold">الأصناف</label>
+                        <select class="form-select select2" id="menuSelect" multiple>
+                            {% for item in menu_items %}
+                            <option value="{{ item.id }}" data-price="{{ item.price|unlocalize }}" data-category="{{ item.category.name }}">
+                                {{ item.name }} - {{ item.price|floatformat:0 }} ج.م ({{ item.category.name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">يمكنك اختيار أكثر من صنف</small>
+                    </div>
+                    
+                    <!-- الأصناف المختارة -->
+                    <div class="mb-4 order-field order-field-wide">
+                        <h6>الأصناف المختارة</h6>
+                        <div id="selectedItems"></div>
+                    </div>
+                    
+                    <!-- رسوم التوصيل -->
+                    <div class="mb-4 order-field delivery-field">
+                        <label class="form-label fw-bold">رسوم التوصيل</label>
+                        <input type="number" class="form-control" id="deliveryFee" name="delivery_fee" value="{% if order.delivery_fee is not None and order.delivery_fee > 0 %}{{ order.delivery_fee|floatformat:0|unlocalize }}{% endif %}" placeholder="أدخل رسوم التوصيل" min="0" step="1">
+                    </div>
+                    
+                    <!-- الملاحظات -->
+                    <div class="mb-4 order-field notes-field">
+                        <label class="form-label fw-bold">ملاحظات</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3">{{ order.notes }}</textarea>
+                    </div>
+                    
+                    <!-- الإجمالي -->
+                    <div class="mb-4 order-field order-field-wide">
+                        <div class="order-total">
+                            <span class="fw-bold">الإجمالي</span>
+                            <strong id="totalAmount">{{ order.total|floatformat:0 }} ج.م</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- الأزرار -->
+                    <div class="order-actions order-field-wide">
+                        <a href="{% url 'order_detail' order.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-right"></i> إلغاء
+                        </a>
+                        <button type="submit" class="btn btn-add btn-lg">
+                            <i class="bi bi-check-circle"></i> حفظ التعديلات
+                        </button>
+                    </div>
+                    
+                    <!-- حقل مخفي لتخزين بيانات الأصناف -->
+                    <input type="hidden" id="itemsData" name="items_data">
+                    
+                    <!-- تخزين الأصناف الموجودة في الطلب -->
+                    <div id="existingItems" style="display:none;">
+                        {% for item in order.items.all %}
+                        <div class="existing-item" 
+                             data-id="{{ item.menu_item.id }}" 
+                             data-name="{{ item.menu_item.name|escapejs }}" 
+                             data-price="{{ item.price|unlocalize }}" 
+                             data-regular-price="{{ item.regular_price|unlocalize }}" 
+                             data-quantity="{{ item.quantity }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+</div>
+</div>
+
+<script>
+    let selectedItems = [];
+    
+    // تحميل الأصناف الموجودة في الطلب من data attributes
+    document.addEventListener('DOMContentLoaded', function() {
+        const existingItems = document.querySelectorAll('.existing-item');
+        existingItems.forEach(itemDiv => {
+            const regularPrice = parseFloat(itemDiv.dataset.regularPrice);
+            const price = parseFloat(itemDiv.dataset.price);
+            const discount = Math.max(regularPrice - price, 0);
+            selectedItems.push({
+                id: parseInt(itemDiv.dataset.id),
+                name: itemDiv.dataset.name,
+                price: regularPrice - discount,
+                regularPrice: regularPrice,
+                discount: discount,
+                discountOpen: discount > 0,
+                quantity: parseInt(itemDiv.dataset.quantity)
+            });
+        });
+        
+        console.log('Loaded items:', selectedItems);
+        renderSelectedItems();
+        updateTotal();
+    });
+    
+    // إظهار/إخفاء حقول العميل الجديد
+    document.getElementById('customerSelect').addEventListener('change', function() {
+        if (this.value === 'new') {
+            document.getElementById('newCustomerFields').classList.remove('d-none');
+        } else {
+            document.getElementById('newCustomerFields').classList.add('d-none');
+        }
+    });
+    
+    // معالجة اختيار الأصناف
+    document.getElementById('menuSelect').addEventListener('change', function() {
+        const selectedOptions = Array.from(this.selectedOptions);
+        
+        selectedOptions.forEach(option => {
+            const itemId = option.value;
+            const itemName = option.text.split(' - ')[0];
+            const itemPrice = parseFloat(option.dataset.price);
+            
+            if (!selectedItems.find(item => String(item.id) === itemId)) {
+                selectedItems.push({
+                    id: parseInt(itemId),
+                    name: itemName,
+                    price: itemPrice,
+                    regularPrice: itemPrice,
+                    discount: 0,
+                    discountOpen: false,
+                    quantity: 1
+                });
+            }
+        });
+        
+        renderSelectedItems();
+        updateTotal();
+    });
+    
+    // عرض الأصناف المختارة
+    function renderSelectedItems() {
+        const container = document.getElementById('selectedItems');
+        container.innerHTML = '';
+        
+        if (selectedItems.length === 0) {
+            container.innerHTML = '<p class="text-muted">لا توجد أصناف مختارة</p>';
+            return;
+        }
+        
+        selectedItems.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'order-item';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <strong>${item.name}</strong>
+                        <span class="text-muted ms-2">${item.regularPrice} ج.م</span>
+                        ${item.discount > 0 ? `<small class="d-block text-success">بعد الخصم: ${item.price} ج.م</small>` : ''}
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        ${item.discountOpen ? `
+                            <label class="small mb-0" for="itemDiscount${index}">الخصم</label>
+                            <input id="itemDiscount${index}" class="form-control form-control-sm item-sale-price" type="number" min="0" max="${item.regularPrice}" step="1" value="${item.discount || ''}" oninput="updateItemDiscount(${index}, this.value)">
+                            <small class="text-muted">ج.م</small>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearItemDiscount(${index})">إلغاء الخصم</button>
+                        ` : `
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleItemDiscount(${index})">إضافة خصم</button>
+                        `}
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeQuantity(${index}, -1)">-</button>
+                        <span class="mx-2">${item.quantity}</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeQuantity(${index}, 1)">+</button>
+                        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeItem(${index})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function toggleItemDiscount(index) {
+        selectedItems[index].discountOpen = true;
+        renderSelectedItems();
+        document.getElementById(`itemDiscount${index}`).focus();
+    }
+
+    function clearItemDiscount(index) {
+        selectedItems[index].discount = 0;
+        selectedItems[index].price = selectedItems[index].regularPrice;
+        selectedItems[index].discountOpen = false;
+        renderSelectedItems();
+        updateTotal();
+    }
+
+    function updateItemDiscount(index, value) {
+        const item = selectedItems[index];
+        item.discount = value === '' ? null : Number(value);
+        item.price = Number.isInteger(item.discount) && item.discount >= 0 && item.discount <= item.regularPrice
+            ? item.regularPrice - item.discount
+            : null;
+        const input = document.getElementById(`itemDiscount${index}`);
+        input.setCustomValidity(item.price !== null ? '' : 'أدخل خصمًا صحيحًا لا يتجاوز السعر');
+        updateTotal();
+    }
+    
+    // تغيير الكمية
+    function changeQuantity(index, delta) {
+        selectedItems[index].quantity += delta;
+        if (selectedItems[index].quantity < 1) {
+            selectedItems[index].quantity = 1;
+        }
+        renderSelectedItems();
+        updateTotal();
+    }
+    
+    // حذف صنف
+    function removeItem(index) {
+        selectedItems.splice(index, 1);
+        renderSelectedItems();
+        updateTotal();
+    }
+    
+    // تحديث الإجمالي
+    function updateTotal() {
+        const deliveryFeeInput = document.getElementById('deliveryFee').value;
+        const deliveryFee = deliveryFeeInput === '' ? 0 : parseFloat(deliveryFeeInput) || 0;
+        const subtotal = selectedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * item.quantity), 0);
+        const total = subtotal + deliveryFee;
+
+        document.getElementById('totalAmount').textContent = total.toFixed(0) + ' ج.م';
+        return total.toFixed(0);
+    }
+    
+    // تحديث الإجمالي عند تغيير رسوم التوصيل
+    document.getElementById('deliveryFee').addEventListener('input', updateTotal);
+    
+    // إرسال النموذج
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (selectedItems.length === 0) {
+            alert('يرجى اختيار صنف واحد على الأقل');
+            return;
+        }
+
+        if (selectedItems.some(item => !Number.isInteger(item.discount) || item.discount < 0 || item.discount > item.regularPrice)) {
+            alert('يجب أن يكون الخصم عددًا صحيحًا لا يتجاوز السعر');
+            return;
+        }
+        
+        document.getElementById('itemsData').value = JSON.stringify(selectedItems);
+        this.submit();
+    });
+</script>
+{% endblock %}

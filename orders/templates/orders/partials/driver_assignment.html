@@ -1,0 +1,18 @@
+{% if order.status == 'delivered' %}
+<span class="text-muted">{{ order.driver.username|default:"-" }}</span>
+{% else %}
+<form method="post" action="{% url 'order_assign_driver' order.pk %}" class="driver-assign-form d-flex align-items-center gap-1">
+    {% csrf_token %}
+    <label for="driver-{{ order.pk }}" class="visually-hidden">مندوب الطلب #{{ order.daily_serial }}</label>
+    <select id="driver-{{ order.pk }}" name="driver_id" class="form-select form-select-sm" aria-label="مندوب الطلب #{{ order.daily_serial }}">
+        <option value="">بدون مندوب</option>
+        {% for driver in drivers %}
+        <option value="{{ driver.pk }}" {% if order.driver_id == driver.pk %}selected{% endif %}>{{ driver.username }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary" title="حفظ تعيين المندوب" aria-label="حفظ تعيين المندوب للطلب #{{ order.daily_serial }}">
+        <i class="bi bi-check2"></i>
+    </button>
+    <span class="visually-hidden" data-assignment-feedback role="status" aria-live="polite"></span>
+</form>
+{% endif %}

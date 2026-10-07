@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if customer %}تعديل عميل{% else %}إضافة عميل{% endif %} - مطبخ الف هنا{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-person"></i> 
+                    {% if customer %}تعديل عميل{% else %}إضافة عميل جديد{% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">اسم العميل</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{% if customer %}{{ customer.name }}{% endif %}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">رقم الهاتف</label>
+                        <input type="text" class="form-control" id="phone" name="phone" value="{% if customer %}{{ customer.phone }}{% endif %}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">العنوان</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required>{% if customer %}{{ customer.address }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="google_maps_link" class="form-label">رابط خرائط جوجل (اختياري)</label>
+                        <input type="url" class="form-control" id="google_maps_link" name="google_maps_link" value="{% if customer %}{{ customer.google_maps_link }}{% endif %}" placeholder="https://maps.app.goo.gl/...">
+                        <small class="text-muted">سيتم استخراج الإحداثيات تلقائياً من الرابط</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="latitude" class="form-label">خط العرض (Latitude)</label>
+                            <input type="text" class="form-control" id="latitude" name="latitude" value="{% if customer %}{{ customer.latitude }}{% endif %}" placeholder="مثال: 24.7136">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="longitude" class="form-label">خط الطول (Longitude)</label>
+                            <input type="text" class="form-control" id="longitude" name="longitude" value="{% if customer %}{{ customer.longitude }}{% endif %}" placeholder="مثال: 46.6753">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="extractCoordinates()">
+                            <i class="bi bi-map"></i> استخراج الإحداثيات من الرابط
+                        </button>
+                        <a href="https://www.google.com/maps" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-map"></i> احصل على الإحداثيات من خرائط جوجل
+                        </a>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'customers_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-right"></i> رجوع
+                        </a>
+                        <button type="submit" class="btn btn-add">
+                            <i class="bi bi-check-circle"></i> حفظ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function extractCoordinates() {
+    const linkInput = document.getElementById('google_maps_link');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    const link = linkInput.value.trim();
+
+    if (!link) {
+        alert('يرجى إدخال رابط خرائط جوجل أولاً');
+        return;
+    }
+
+    // محاولة استخراج الإحداثيات من روابط مختلفة
+    let coordinates = null;
+
+    // رابط مشفر (مثل maps.app.goo.gl)
+    if (link.includes('maps.app.goo.gl') || link.includes('goo.gl')) {
+        alert('لا يمكن استخراج الإحداثيات تلقائياً من الروابط المختصرة. يرجى استخدام الرابط الكامل أو إدخال الإحداثيات يدوياً.');
+        return;
+    }
+
+    // رابط عادي يحتوي على @lat,lng
+    const atMatch = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) {
+        coordinates = { lat: atMatch[1], lng: atMatch[2] };
+    }
+
+    // رابط يحتوي على q=lat,lng
+    const qMatch = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (qMatch) {
+        coordinates = { lat: qMatch[1], lng: qMatch[2] };
+    }
+
+    // رابط يحتوي على ll=lat,lng
+    const llMatch = link.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (llMatch) {
+        coordinates = { lat: llMatch[1], lng: llMatch[2] };
+    }
+
+    if (coordinates) {
+        latInput.value = coordinates.lat;
+        lngInput.value = coordinates.lng;
+        alert('تم استخراج الإحداثيات بنجاح!\nخط العرض: ' + coordinates.lat + '\nخط الطول: ' + coordinates.lng);
+    } else {
+        alert('لم يتم العثور على إحداثيات في الرابط. يرجى إدخال الإحداثيات يدوياً أو استخدام رابط يحتوي على الإحداثيات.');
+    }
+}
+</script>
+{% endblock %}

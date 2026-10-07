@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if can_manage_menu %}إدارة المنيو{% else %}المنيو{% endif %} - مطبخ الف هنا{% endblock %}
+
+{% block extra_css %}
+<style>
+    .menu-category {
+        margin-bottom: 1.5rem;
+    }
+
+    .menu-category-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid var(--line-color);
+    }
+
+    .menu-table {
+        width: 100%;
+        table-layout: fixed;
+        margin-bottom: 0;
+    }
+
+    .menu-table th,
+    .menu-table td {
+        padding: 0.8rem 1rem;
+        vertical-align: middle;
+    }
+
+    .menu-managed th:nth-child(1) { width: 12%; }
+    .menu-managed th:nth-child(2) { width: 18%; }
+    .menu-managed th:nth-child(3) { width: 28%; }
+    .menu-managed th:nth-child(4) { width: 12%; }
+    .menu-managed th:nth-child(5) { width: 8%; }
+    .menu-managed th:nth-child(6) { width: 22%; }
+
+    .menu-readonly th:nth-child(1) { width: 12%; }
+    .menu-readonly th:nth-child(2) { width: 23%; }
+    .menu-readonly th:nth-child(3) { width: 43%; }
+    .menu-readonly th:nth-child(4) { width: 22%; }
+
+    .menu-table .item-description {
+        overflow-wrap: anywhere;
+    }
+
+    .menu-table .item-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .menu-table td[data-label="الصورة"] {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    @media (max-width: 640px) {
+        .menu-table .item-image {
+            width: 60px;
+            height: 60px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .menu-table {
+            min-width: 650px;
+        }
+
+        .menu-category .table-responsive {
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+            border-radius: 0;
+        }
+
+        /* Action buttons */
+        .menu-table .btn {
+            margin: 2px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* Card header buttons */
+        .card-header .btn {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+        }
+
+        /* Badge */
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-list-ul"></i> {% if can_manage_menu %}إدارة المنيو{% else %}المنيو{% endif %}
+                </h4>
+                {% if can_manage_menu %}
+                <div class="btn-group btn-group-sm">
+                    <a href="{% url 'menu_item_add' %}" class="btn btn-add">
+                        <i class="bi bi-plus-circle"></i> إضافة صنف
+                    </a>
+                    <a href="{% url 'category_add' %}" class="btn btn-primary">
+                        <i class="bi bi-folder-plus"></i> إضافة قسم
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% for category in categories %}
+                <div class="menu-category">
+                    <h5 class="menu-category-title text-primary mb-3">
+                        <i class="bi bi-folder"></i> {{ category.name }}
+                        {% if can_manage_menu %}
+                        <div class="ms-auto">
+                            <a href="{% url 'category_edit' category.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'category_delete' category.pk %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('هل أنت متأكد من حذف هذا القسم؟ سيتم حذف جميع الأصناف الموجودة فيه.')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered menu-table {% if can_manage_menu %}menu-managed{% else %}menu-readonly{% endif %}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>الصورة</th>
+                                    <th>الصنف</th>
+                                    <th>الوصف</th>
+                                    <th>السعر</th>
+                                    {% if can_manage_menu %}
+                                    <th>الحالة</th>
+                                    <th>الإجراءات</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in category.items.all %}
+                                <tr class="{% if not item.is_active %}table-secondary{% endif %}">
+                                    <td data-label="الصورة">
+                                        {% if item.image %}
+                                        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="item-image">
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="الصنف"><strong>{{ item.name }}</strong></td>
+                                    <td data-label="الوصف" class="item-description">{{ item.description|truncatewords:10|default:"-" }}</td>
+                                    <td data-label="السعر">{{ item.price|floatformat:0 }} ج.م</td>
+                                    {% if can_manage_menu %}
+                                    <td data-label="الحالة">
+                                        {% if item.is_active %}
+                                            <span class="badge bg-success">نشط</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">معطل</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="الإجراءات">
+                                        <a href="{% url 'menu_item_edit' item.id %}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'menu_item_delete' item.id %}" class="btn btn-sm btn-danger" onclick="return confirm('هل أنت متأكد من حذف هذا الصنف؟')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="{% if can_manage_menu %}5{% else %}3{% endif %}" class="text-center">لا توجد أصناف في هذا القسم</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    لا توجد أقسام في المنيو.
+                    {% if can_manage_menu %}
+                    <a href="{% url 'category_add' %}">أضف قسماً جديداً</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1078 @@
+{% extends 'base.html' %}
+
+{% block title %}تطبيق المندوب - مطبخ الف هنا{% endblock %}
+
+{% block extra_css %}
+<style>
+    .map-toggle-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: 1px solid #417c5e;
+        background: white;
+        color: #24332f;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .map-toggle-btn:hover {
+        background: #f3f6f4;
+    }
+
+    .map-toggle-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .driver-map-container {
+        position: relative;
+        height: 400px;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .driver-map-container #driverMap {
+        height: 100%;
+        width: 100%;
+    }
+
+    .driver-triangle {
+        display: block;
+        width: 24px;
+        height: 24px;
+        background-color: #193b36;
+        clip-path: polygon(50% 0, 0 100%, 100% 100%);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
+
+    .customer-circle {
+        display: block;
+        width: 16px;
+        height: 16px;
+        background-color: #bd503b;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .order-navigation-info {
+        background: #e8f5e9;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .distance-time-info {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .distance-time-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .driver-order {
+        border: 1px solid var(--line-color);
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+    }
+
+    .nav-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-phone"></i> تطبيق المندوب
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- عنصر مخفي لتخزين بيانات الطلبات -->
+                <div id="ordersData" style="display: none;">{{ orders_json|safe }}</div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    موقعك مباشر، ويتم حفظ نقطة في المسار كل دقيقتين
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">الحالة</h5>
+                                <span id="trackingStatus" class="badge bg-warning">في انتظار الإذن</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">آخر تحديث</h5>
+                                <span id="lastUpdate" class="ltr-time" dir="ltr">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- خريطة المندوب -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">الخريطة</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="map-toggle-btn active" id="leafletBtn" onclick="switchMapProvider('leaflet')">
+                                <i class="bi bi-map"></i> Leaflet
+                            </button>
+                            <button type="button" class="map-toggle-btn" id="osrmBtn" onclick="switchMapProvider('osrm')">
+                                <i class="bi bi-signpost"></i> OSRM
+                            </button>
+                            <button type="button" class="map-toggle-btn" id="mapboxBtn" onclick="switchMapProvider('mapbox')">
+                                <i class="bi bi-map"></i> Mapbox
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="driver-map-container">
+                            <div id="driverMap"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">الطلبات المخصصة لك</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="ordersList">
+                            {% for order in orders %}
+                            <article class="driver-order mb-3" data-order-id="{{ order.pk }}">
+                                <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                                    <strong>طلب #{{ order.daily_serial }}</strong>
+                                    <span class="badge {% if order.status == 'delivering' %}bg-info{% elif order.status == 'ready' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ order.get_status_display }}</span>
+                                </div>
+                                {% if order.customer %}
+                                    <p class="mb-1"><strong>{{ order.customer.name }}</strong></p>
+                                    <p class="mb-1">{{ order.customer.phone }}</p>
+                                    <p class="mb-2 cursor-pointer" onclick="focusOnCustomer({{ order.pk }})" style="cursor: pointer; color: var(--primary-color);">
+                                        <i class="bi bi-geo-alt"></i> {{ order.customer.address }}
+                                    </p>
+                                    <div class="order-navigation-info" id="nav-info-{{ order.pk }}">
+                                        {% if order.customer.latitude and order.customer.longitude %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-geo-alt"></i> موقع العميل متاح على الخريطة
+                                        </small>
+                                        {% elif order.customer.google_maps_link %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-link-45deg"></i> رابط Google Maps متاح
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> لا توجد إحداثيات للعميل
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <p class="mb-1"><strong>{{ order.customer_name }}</strong></p>
+                                    <p class="mb-1">{{ order.customer_phone }}</p>
+                                    <p class="mb-2">{{ order.customer_address }}</p>
+                                    <div class="order-navigation-info" id="nav-info-{{ order.pk }}">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> عميل غير مسجل
+                                        </small>
+                                    </div>
+                                {% endif %}
+                                <p class="small text-muted mb-2">الإجمالي: {{ order.total|floatformat:0 }} ج.م</p>
+                                {% if order.status == 'ready' %}
+                                <button type="button" class="btn btn-primary" data-status="delivering" data-url="{% url 'order_update_status' order.pk %}" onclick="updateOrderStatus(this)">
+                                    <i class="bi bi-truck"></i> بدء التوصيل
+                                </button>
+                                {% elif order.status == 'delivering' %}
+                                <button type="button" class="btn btn-success" data-status="delivered" data-url="{% url 'order_update_status' order.pk %}" onclick="updateOrderStatus(this)">
+                                    <i class="bi bi-check-circle"></i> تأكيد التسليم
+                                </button>
+                                {% else %}
+                                <span class="small text-muted">سيظهر إجراء التوصيل عند جاهزية الطلب</span>
+                                {% endif %}
+                            </article>
+                            {% empty %}
+                            <p class="text-muted mb-0">لا توجد طلبات مخصصة لك حاليًا</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let locationWatchId = null;
+    let locationSendInterval = null;
+    let latestLocation = null;
+    let lastLocationSentAt = 0;
+    let map;
+    let driverMarker = null;
+    let customerMarkers = {};
+    let routeLayers = []; // لتخزين طبقات المسارات
+    let currentMapProvider = localStorage.getItem('driverMapProvider') || 'leaflet';
+    const mapboxAccessToken = '{{ mapbox_access_token }}';
+    let ordersData = [];
+
+    // طلب إذن الموقع
+    function requestLocationPermission() {
+        if ('geolocation' in navigator) {
+            if (locationWatchId !== null) return;
+
+            locationWatchId = navigator.geolocation.watchPosition(position => {
+                latestLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                document.getElementById('trackingStatus').className = 'badge bg-success';
+                document.getElementById('trackingStatus').textContent = 'نشط';
+                sendLocation();
+                updateDriverMarker();
+            }, handleLocationError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 10000
+                });
+        } else {
+            document.getElementById('trackingStatus').className = 'badge bg-danger';
+            document.getElementById('trackingStatus').textContent = 'المتصفح لا يدعم الموقع';
+        }
+    }
+
+    // Send the latest fix often; the server samples route history separately.
+    async function sendLocation() {
+        if (!latestLocation || Date.now() - lastLocationSentAt < 15000) return;
+        lastLocationSentAt = Date.now();
+
+        fetch('/api/driver-location/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(latestLocation)
+        })
+        .then(async response => {
+            const result = await response.json();
+            if (response.ok && result.status === 'success') {
+                document.getElementById('trackingStatus').className = 'badge bg-success';
+                document.getElementById('trackingStatus').textContent = 'الموقع ظاهر على الخريطة';
+                const [time, meridiem] = new Date().toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }).trim().split(/\s+/);
+                const updateTime = `${time} ${meridiem}`;
+                document.getElementById('lastUpdate').textContent = updateTime;
+            } else {
+                throw new Error(`تعذر تحديث الموقع: ${response.status}`);
+            }
+        })
+        .catch(error => {
+            console.error('فشل إرسال موقع المندوب:', error);
+            document.getElementById('trackingStatus').className = 'badge bg-danger';
+            document.getElementById('trackingStatus').textContent = 'تعذر إرسال الموقع';
+        });
+    }
+
+    // معالجة أخطاء الموقع
+    function handleLocationError(error) {
+        console.error('خطأ في تحديد الموقع:', error);
+        document.getElementById('trackingStatus').className = 'badge bg-danger';
+        document.getElementById('trackingStatus').textContent = error.code === 1
+            ? 'اسمح بالوصول إلى الموقع'
+            : 'تعذر تحديد الموقع';
+    }
+
+    // بدء التتبع كل دقيقتين
+    function startTracking() {
+        requestLocationPermission();
+        if (locationSendInterval === null) {
+            locationSendInterval = setInterval(sendLocation, 15000);
+        }
+    }
+
+    async function updateOrderStatus(button) {
+        button.disabled = true;
+        const form = new FormData();
+        form.append('status', button.dataset.status);
+        form.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+        try {
+            const response = await fetch(button.dataset.url, {
+                method: 'POST',
+                body: form
+            });
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') {
+                throw new Error('تعذر تحديث حالة الطلب');
+            }
+            location.reload();
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+        }
+    }
+
+    // الحصول على CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // تبديل مزود الخريطة
+    function switchMapProvider(provider) {
+        if (currentMapProvider === provider) return;
+
+        currentMapProvider = provider;
+        localStorage.setItem('driverMapProvider', provider);
+
+        document.getElementById('leafletBtn').classList.toggle('active', provider === 'leaflet');
+        document.getElementById('osrmBtn').classList.toggle('active', provider === 'osrm');
+        document.getElementById('mapboxBtn').classList.toggle('active', provider === 'mapbox');
+
+        if (map) {
+            // مسح العلامات القديمة
+            if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+                // مسح علامات Leaflet
+                if (driverMarker) {
+                    map.removeLayer(driverMarker);
+                    driverMarker = null;
+                }
+                Object.values(customerMarkers).forEach(marker => {
+                    map.removeLayer(marker);
+                });
+                customerMarkers = {};
+                // مسح المسارات
+                routeLayers.forEach(layer => map.removeLayer(layer));
+                routeLayers = [];
+            } else {
+                // مسح علامات Mapbox
+                clearMapboxMarkers();
+            }
+
+            map.remove();
+            initMap();
+            updateDriverMarker();
+            addCustomerMarkers();
+            updateAllDistanceTimes();
+        }
+    }
+
+    // تهيئة الخريطة
+    function initMap() {
+        document.getElementById('leafletBtn').classList.toggle('active', currentMapProvider === 'leaflet');
+        document.getElementById('osrmBtn').classList.toggle('active', currentMapProvider === 'osrm');
+        document.getElementById('mapboxBtn').classList.toggle('active', currentMapProvider === 'mapbox');
+
+        if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+            initLeafletMap();
+        } else {
+            initMapboxMap();
+        }
+    }
+
+    function initLeafletMap() {
+        map = L.map('driverMap').setView([31.2001, 29.9187], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        L.control.scale({
+            imperial: false,
+            metric: true
+        }).addTo(map);
+
+        L.control.zoom({
+            position: 'topright'
+        }).addTo(map);
+    }
+
+    function initMapboxMap() {
+        if (!mapboxAccessToken) {
+            alert('مفتاح Mapbox غير متوفر. سيتم استخدام Leaflet بدلاً منه.');
+            switchMapProvider('leaflet');
+            return;
+        }
+
+        mapboxgl.accessToken = mapboxAccessToken;
+        map = new mapboxgl.Map({
+            container: 'driverMap',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [29.9187, 31.2001],
+            zoom: 14
+        });
+
+        map.addControl(new mapboxgl.NavigationControl(), 'topright');
+        map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }));
+
+        // تحديث علامة المندوب عند تحميل الخريطة
+        map.on('load', () => {
+            if (latestLocation) {
+                updateDriverMarker();
+            }
+        });
+    }
+
+    // تحديث علامة المندوب
+    function updateDriverMarker() {
+        if (!latestLocation || !map) {
+            console.log('Cannot update driver marker - no location or map');
+            return;
+        }
+
+        console.log('Updating driver marker at:', latestLocation.latitude, latestLocation.longitude);
+
+        if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+            if (driverMarker) {
+                driverMarker.setLatLng([latestLocation.latitude, latestLocation.longitude]);
+                console.log('Driver marker updated');
+            } else {
+                const driverIcon = L.divIcon({
+                    className: 'driver-marker',
+                    html: '<span class="driver-triangle"></span>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 0],
+                    popupAnchor: [0, -4]
+                });
+                driverMarker = L.marker([latestLocation.latitude, latestLocation.longitude], { icon: driverIcon })
+                    .bindPopup('<b>موقعك الحالي</b>')
+                    .addTo(map);
+                map.setView([latestLocation.latitude, latestLocation.longitude], 15);
+                console.log('Driver marker created');
+            }
+        } else {
+            // Mapbox implementation
+            if (map.loaded()) {
+                if (map.getSource('driver')) {
+                    map.getSource('driver').setData({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [latestLocation.longitude, latestLocation.latitude]
+                        }
+                    });
+                } else {
+                    map.addSource('driver', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [latestLocation.longitude, latestLocation.latitude]
+                            }
+                        }
+                    });
+
+                    map.addLayer({
+                        id: 'driver-marker',
+                        type: 'symbol',
+                        source: 'driver',
+                        layout: {
+                            'text-field': '▲',
+                            'text-size': 24,
+                            'text-rotate': 0,
+                            'text-anchor': 'bottom',
+                            'text-offset': [0, 0]
+                        },
+                        paint: {
+                            'text-color': '#193b36',
+                            'text-halo-color': '#ffffff',
+                            'text-halo-width': 2
+                        }
+                    });
+                }
+                map.flyTo({ center: [latestLocation.longitude, latestLocation.latitude], zoom: 15 });
+            } else {
+                map.on('load', () => {
+                    updateDriverMarker();
+                });
+            }
+        }
+
+        // تحديث المسافات والأوقات
+        updateDistanceTimes();
+
+        // إذا كان OSRM، قم بتحديث المسارات
+        if (currentMapProvider === 'osrm') {
+            console.log('Triggering OSRM distance update from driver marker');
+            updateOSRMDistances();
+        }
+    }
+
+    // تحديث المسافات والأوقات للطلبات
+    function updateDistanceTimes() {
+        const ordersElements = document.querySelectorAll('.driver-order');
+
+        ordersElements.forEach(orderEl => {
+            const orderId = parseInt(orderEl.dataset.orderId);
+            const order = ordersData.find(o => o.pk === orderId);
+
+            if (order && order.customer && order.customer.latitude && order.customer.longitude) {
+                const navInfo = orderEl.querySelector('.order-navigation-info');
+                let distanceTimeDiv = navInfo.querySelector('.distance-time-info');
+
+                if (distanceTimeDiv) {
+                    distanceTimeDiv.remove();
+                }
+
+                const distance = calculateDistance(
+                    latestLocation.latitude,
+                    latestLocation.longitude,
+                    order.customer.latitude,
+                    order.customer.longitude
+                );
+                const time = estimateTime(distance);
+
+                distanceTimeDiv = document.createElement('div');
+                distanceTimeDiv.className = 'distance-time-info';
+                distanceTimeDiv.innerHTML = `
+                    <div class="distance-time-item">
+                        <i class="bi bi-signpost-2"></i>
+                        <span>${formatDistance(distance)}</span>
+                    </div>
+                    <div class="distance-time-item">
+                        <i class="bi bi-clock"></i>
+                        <span>${time}</span>
+                    </div>
+                `;
+                navInfo.appendChild(distanceTimeDiv);
+            }
+        });
+    }
+
+    // تحديث المسافات عند التبديل بين Leaflet و Mapbox
+    function updateAllDistanceTimes() {
+        const ordersElements = document.querySelectorAll('.driver-order');
+
+        ordersElements.forEach(orderEl => {
+            const orderId = parseInt(orderEl.dataset.orderId);
+            const order = ordersData.find(o => o.pk === orderId);
+
+            if (order && order.customer && order.customer.latitude && order.customer.longitude && latestLocation) {
+                const navInfo = orderEl.querySelector('.order-navigation-info');
+                let distanceTimeDiv = navInfo.querySelector('.distance-time-info');
+
+                if (distanceTimeDiv) {
+                    distanceTimeDiv.remove();
+                }
+
+                const distance = calculateDistance(
+                    latestLocation.latitude,
+                    latestLocation.longitude,
+                    order.customer.latitude,
+                    order.customer.longitude
+                );
+                const time = estimateTime(distance);
+
+                distanceTimeDiv = document.createElement('div');
+                distanceTimeDiv.className = 'distance-time-info';
+                distanceTimeDiv.innerHTML = `
+                    <div class="distance-time-item">
+                        <i class="bi bi-signpost-2"></i>
+                        <span>${formatDistance(distance)}</span>
+                    </div>
+                    <div class="distance-time-item">
+                        <i class="bi bi-clock"></i>
+                        <span>${time}</span>
+                    </div>
+                `;
+                navInfo.appendChild(distanceTimeDiv);
+            }
+        });
+    }
+
+    // حساب المسافة والوقت (Haversine formula)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // نصف قطر الأرض بالكيلومتر
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    function formatDistance(km) {
+        if (km < 1) {
+            return Math.round(km * 1000) + ' م';
+        }
+        return km.toFixed(1) + ' كم';
+    }
+
+    function estimateTime(km) {
+        // افتراض سرعة متوسطة 30 كم/ساعة في المدينة
+        const avgSpeed = 30;
+        const hours = km / avgSpeed;
+        const minutes = Math.round(hours * 60);
+        if (minutes < 60) {
+            return minutes + ' دقيقة';
+        }
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return h + ' ساعة ' + m + ' دقيقة';
+    }
+
+    // جلب المسار من OSRM API
+    async function fetchOSRMRoute(startLat, startLng, endLat, endLng) {
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
+            console.log('Fetching OSRM route:', url);
+            const response = await fetch(url);
+            const data = await response.json();
+            console.log('OSRM response:', data);
+
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                const route = data.routes[0];
+                return {
+                    geometry: route.geometry,
+                    distance: route.distance / 1000, // تحويل إلى كم
+                    duration: route.duration / 60 // تحويل إلى دقائق
+                };
+            }
+            console.warn('OSRM no route found');
+            return null;
+        } catch (error) {
+            console.error('Error fetching OSRM route:', error);
+            return null;
+        }
+    }
+
+    // رسم المسار على الخريطة
+    function drawRoute(routeData) {
+        if (!routeData || !routeData.geometry) {
+            console.warn('No route geometry to draw');
+            return;
+        }
+
+        const routeLayer = L.geoJSON(routeData.geometry, {
+            style: {
+                color: '#193b36',
+                weight: 5,
+                opacity: 0.7
+            }
+        }).addTo(map);
+
+        routeLayers.push(routeLayer);
+        console.log('Route drawn successfully');
+    }
+
+    // تحديث المسافات والأوقات من OSRM
+    async function updateOSRMDistances() {
+        if (currentMapProvider !== 'osrm') {
+            console.log('Skipping OSRM update - not OSRM provider');
+            return;
+        }
+
+        console.log('Updating OSRM distances...');
+        const ordersElements = document.querySelectorAll('.driver-order');
+
+        // استخدام موقع افتراضي إذا لم يكن موقع المندوب متاح
+        const driverLat = latestLocation ? latestLocation.latitude : 31.2001; // الإسكندرية افتراضي
+        const driverLng = latestLocation ? latestLocation.longitude : 29.9187;
+
+        console.log('Driver location:', driverLat, driverLng);
+
+        for (const orderEl of ordersElements) {
+            const orderId = parseInt(orderEl.dataset.orderId);
+            const order = ordersData.find(o => o.pk === orderId);
+
+            if (order && order.customer && order.customer.latitude && order.customer.longitude) {
+                const navInfo = orderEl.querySelector('.order-navigation-info');
+                let distanceTimeDiv = navInfo.querySelector('.distance-time-info');
+
+                if (distanceTimeDiv) {
+                    distanceTimeDiv.remove();
+                }
+
+                // جلب المسار من OSRM
+                const routeData = await fetchOSRMRoute(
+                    driverLat,
+                    driverLng,
+                    order.customer.latitude,
+                    order.customer.longitude
+                );
+
+                if (routeData) {
+                    // رسم المسار
+                    drawRoute(routeData);
+
+                    // عرض المسافة والوقت
+                    distanceTimeDiv = document.createElement('div');
+                    distanceTimeDiv.className = 'distance-time-info';
+                    distanceTimeDiv.innerHTML = `
+                        <div class="distance-time-item">
+                            <i class="bi bi-signpost-2"></i>
+                            <span>${formatDistance(routeData.distance)}</span>
+                        </div>
+                        <div class="distance-time-item">
+                            <i class="bi bi-clock"></i>
+                            <span>${Math.round(routeData.duration)} دقيقة</span>
+                        </div>
+                    `;
+                    navInfo.appendChild(distanceTimeDiv);
+                } else {
+                    // إذا فشل OSRM، استخدم Haversine كبديل
+                    const distance = calculateDistance(
+                        driverLat,
+                        driverLng,
+                        order.customer.latitude,
+                        order.customer.longitude
+                    );
+                    const time = estimateTime(distance);
+
+                    distanceTimeDiv = document.createElement('div');
+                    distanceTimeDiv.className = 'distance-time-info';
+                    distanceTimeDiv.innerHTML = `
+                        <div class="distance-time-item">
+                            <i class="bi bi-signpost-2"></i>
+                            <span>${formatDistance(distance)}</span>
+                        </div>
+                        <div class="distance-time-item">
+                            <i class="bi bi-clock"></i>
+                            <span>${time}</span>
+                        </div>
+                    `;
+                    navInfo.appendChild(distanceTimeDiv);
+                }
+            }
+        }
+    }
+
+    // إضافة علامات العملاء
+    function addCustomerMarkers() {
+        console.log('Adding customer markers...');
+        const ordersElements = document.querySelectorAll('.driver-order');
+        console.log('Orders found:', ordersElements.length);
+
+        ordersElements.forEach(orderEl => {
+            const orderId = parseInt(orderEl.dataset.orderId);
+            const order = ordersData.find(o => o.pk === orderId);
+
+            const navInfo = orderEl.querySelector('.order-navigation-info');
+
+            if (order && order.customer) {
+                const customerLat = order.customer.latitude;
+                const customerLng = order.customer.longitude;
+                const customerName = order.customer.name;
+                const customerAddress = order.customer.address;
+                const googleMapsLink = order.customer.google_maps_link;
+
+                console.log('Processing order:', orderId, 'Customer has coords:', !!customerLat, !!customerLng);
+
+                // إضافة زر التنقل دائماً
+                if (customerLat && customerLng) {
+                    // إذا كانت هناك إحداثيات
+                    if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+                        const customerIcon = L.divIcon({
+                            className: 'customer-marker',
+                            html: '<span class="customer-circle"></span>',
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        });
+
+                        const marker = L.marker([customerLat, customerLng], { icon: customerIcon })
+                            .bindPopup(`<b>${customerName}</b><br>${customerAddress}`)
+                            .addTo(map);
+
+                        customerMarkers[orderId] = marker;
+                        console.log('Customer marker added for order:', orderId);
+
+                        // حساب المسافة والوقت إذا كان موقع المندوب متاح
+                        if (latestLocation) {
+                            if (currentMapProvider === 'osrm') {
+                                // استخدام OSRM للمسارات الدقيقة
+                                // سيتم تحديثها بواسطة updateOSRMDistances
+                                console.log('Will use OSRM for distance');
+                            } else {
+                                // استخدام Haversine التقديري
+                                const distance = calculateDistance(
+                                    latestLocation.latitude,
+                                    latestLocation.longitude,
+                                    customerLat,
+                                    customerLng
+                                );
+                                const time = estimateTime(distance);
+
+                                const distanceTimeDiv = document.createElement('div');
+                                distanceTimeDiv.className = 'distance-time-info';
+                                distanceTimeDiv.innerHTML = `
+                                    <div class="distance-time-item">
+                                        <i class="bi bi-signpost-2"></i>
+                                        <span>${formatDistance(distance)}</span>
+                                    </div>
+                                    <div class="distance-time-item">
+                                        <i class="bi bi-clock"></i>
+                                        <span>${time}</span>
+                                    </div>
+                                `;
+                                navInfo.appendChild(distanceTimeDiv);
+                            }
+                        }
+
+                        // إضافة زر التنقل
+                        const navBtn = document.createElement('a');
+                        navBtn.className = 'btn btn-outline-primary nav-btn';
+                        navBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${customerLat},${customerLng}`;
+                        navBtn.target = '_blank';
+                        navBtn.innerHTML = '<i class="bi bi-navigation"></i> التنقل للعميل';
+                        navInfo.appendChild(navBtn);
+                    } else {
+                        // Mapbox implementation
+                        if (map.loaded()) {
+                            addMapboxCustomerMarker(orderId, customerLat, customerLng, customerName, customerAddress, orderEl);
+                        } else {
+                            map.on('load', () => {
+                                addMapboxCustomerMarker(orderId, customerLat, customerLng, customerName, customerAddress, orderEl);
+                            });
+                        }
+                    }
+                } else if (googleMapsLink) {
+                    // إذا كان هناك رابط Google Maps فقط
+                    const navBtn = document.createElement('a');
+                    navBtn.className = 'btn btn-outline-primary nav-btn';
+                    navBtn.href = googleMapsLink;
+                    navBtn.target = '_blank';
+                    navBtn.innerHTML = '<i class="bi bi-navigation"></i> فتح موقع العميل';
+                    navInfo.appendChild(navBtn);
+                } else {
+                    // إذا لم تكن هناك إحداثيات ولا رابط
+                    const navBtn = document.createElement('a');
+                    navBtn.className = 'btn btn-outline-primary nav-btn';
+                    navBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customerAddress)}`;
+                    navBtn.target = '_blank';
+                    navBtn.innerHTML = '<i class="bi bi-navigation"></i> البحث عن العميل على الخريطة';
+                    navInfo.appendChild(navBtn);
+                }
+            }
+        });
+
+        // إذا كان OSRM، قم بتحديث المسارات
+        if (currentMapProvider === 'osrm') {
+            console.log('Triggering OSRM distance update');
+            updateOSRMDistances();
+        }
+    }
+
+    function addMapboxCustomerMarker(orderId, lat, lng, name, address, orderEl) {
+        const sourceId = `customer-${orderId}`;
+
+        // إضافة المصدر والطبقة إذا لم تكن موجودة
+        if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [lng, lat]
+                    },
+                    properties: {
+                        name: name,
+                        address: address
+                    }
+                }
+            });
+
+            map.addLayer({
+                id: `customer-marker-${orderId}`,
+                type: 'circle',
+                source: sourceId,
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#bd503b',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // إضافة تسمية للعميل
+            map.addLayer({
+                id: `customer-label-${orderId}`,
+                type: 'symbol',
+                source: sourceId,
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-offset': [0, 1.5],
+                    'text-anchor': 'top',
+                    'text-size': 12
+                },
+                paint: {
+                    'text-color': '#000000',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 2
+                }
+            });
+        }
+
+        const navInfo = orderEl.querySelector('.order-navigation-info');
+
+        // حساب المسافة والوقت إذا كان موقع المندوب متاح
+        if (latestLocation) {
+            const distance = calculateDistance(
+                latestLocation.latitude,
+                latestLocation.longitude,
+                lat,
+                lng
+            );
+            const time = estimateTime(distance);
+
+            const distanceTimeDiv = document.createElement('div');
+            distanceTimeDiv.className = 'distance-time-info';
+            distanceTimeDiv.innerHTML = `
+                <div class="distance-time-item">
+                    <i class="bi bi-signpost-2"></i>
+                    <span>${formatDistance(distance)}</span>
+                </div>
+                <div class="distance-time-item">
+                    <i class="bi bi-clock"></i>
+                    <span>${time}</span>
+                </div>
+            `;
+            navInfo.appendChild(distanceTimeDiv);
+        }
+
+        // إضافة زر التنقل
+        const navBtn = document.createElement('a');
+        navBtn.className = 'btn btn-outline-primary nav-btn';
+        navBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+        navBtn.target = '_blank';
+        navBtn.innerHTML = '<i class="bi bi-navigation"></i> التنقل للعميل';
+        navInfo.appendChild(navBtn);
+    }
+
+    // مسح علامات Mapbox عند التبديل
+    function clearMapboxMarkers() {
+        if (!map || !map.getStyle()) return;
+
+        const layersToRemove = [];
+        const sourcesToRemove = [];
+
+        map.getStyle().layers.forEach(layer => {
+            if (layer.id.startsWith('customer-') || layer.id.startsWith('driver-')) {
+                layersToRemove.push(layer.id);
+            }
+        });
+
+        layersToRemove.forEach(layerId => {
+            if (map.getLayer(layerId)) {
+                map.removeLayer(layerId);
+            }
+        });
+
+        Object.keys(map.getStyle().sources).forEach(sourceId => {
+            if (sourceId.startsWith('customer-') || sourceId === 'driver') {
+                sourcesToRemove.push(sourceId);
+            }
+        });
+
+        sourcesToRemove.forEach(sourceId => {
+            if (map.getSource(sourceId)) {
+                map.removeSource(sourceId);
+            }
+        });
+    }
+
+    // توجيه الخريطة إلى العميل
+    function focusOnCustomer(orderId) {
+        const order = ordersData.find(o => o.pk === orderId);
+        if (order && order.customer && order.customer.latitude && order.customer.longitude) {
+            const customerLat = order.customer.latitude;
+            const customerLng = order.customer.longitude;
+
+            console.log('Focusing on customer:', orderId, 'at', customerLat, customerLng);
+
+            if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+                map.setView([customerLat, customerLng], 16);
+
+                // إذا كان OSRM، ارسم المسار
+                if (currentMapProvider === 'osrm') {
+                    // مسح المسارات القديمة
+                    routeLayers.forEach(layer => map.removeLayer(layer));
+                    routeLayers = [];
+
+                    // استخدام موقع المندوب أو الموقع الافتراضي
+                    const driverLat = latestLocation ? latestLocation.latitude : 31.2001;
+                    const driverLng = latestLocation ? latestLocation.longitude : 29.9187;
+
+                    // جلب ورسم المسار الجديد
+                    fetchOSRMRoute(
+                        driverLat,
+                        driverLng,
+                        customerLat,
+                        customerLng
+                    ).then(routeData => {
+                        if (routeData) {
+                            drawRoute(routeData);
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    // بدء التتبع عند التحميل
+    document.addEventListener('DOMContentLoaded', () => {
+        // قراءة بيانات الطلبات من العنصر المخفي
+        const ordersDataElement = document.getElementById('ordersData');
+        if (ordersDataElement && ordersDataElement.textContent) {
+            try {
+                ordersData = JSON.parse(ordersDataElement.textContent);
+                console.log('Orders data loaded:', ordersData.length, 'orders');
+            } catch (e) {
+                console.error('Error parsing orders data:', e);
+                ordersData = [];
+            }
+        }
+
+        startTracking();
+        initMap();
+
+        // تأخير إضافة علامات العملاء حتى يتم تحميل الخريطة
+        if (currentMapProvider === 'leaflet' || currentMapProvider === 'osrm') {
+            setTimeout(() => {
+                console.log('Adding customer markers after delay...');
+                addCustomerMarkers();
+            }, 500);
+        } else {
+            map.on('load', () => {
+                setTimeout(() => {
+                    console.log('Adding customer markers after map load...');
+                    addCustomerMarkers();
+                }, 500);
+            });
+        }
+    });
+
+    window.addEventListener('online', sendLocation);
+</script>
+{% endblock %}

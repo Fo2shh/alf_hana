@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}العملاء - مطبخ الف هنا{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media (max-width: 768px) {
+        .table-responsive {
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+            border-radius: 0;
+        }
+
+        .table {
+            min-width: 650px;
+        }
+
+        /* Action buttons */
+        .table .btn {
+            margin: 2px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* Card header buttons */
+        .card-header .btn {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-people"></i> قائمة العملاء
+                </h4>
+                <a href="{% url 'customer_add' %}" class="btn btn-add">
+                    <i class="bi bi-plus-circle"></i> إضافة عميل
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>رقم الهاتف</th>
+                                <th>العنوان</th>
+                                <th>الموقع (خط العرض/الطول)</th>
+                                <th>رابط خرائط جوجل</th>
+                                <th>إجمالي الطلبات</th>
+                                <th>رمز QR</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers %}
+                            <tr>
+                                <td><strong>{{ customer.name }}</strong></td>
+                                <td>{{ customer.phone }}</td>
+                                <td>{{ customer.address|truncatewords:8 }}</td>
+                                <td>
+                                    {% if customer.latitude and customer.longitude %}
+                                        <small class="text-muted">{{ customer.latitude }}, {{ customer.longitude }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if customer.google_maps_link %}
+                                        <a href="{{ customer.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-map"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ customer.total_orders }}</td>
+                                <td>
+                                    {% if customer.qr_code %}
+                                        <a href="{{ customer.qr_code.url }}" target="_blank" class="btn btn-sm btn-info">
+                                            <i class="bi bi-qr-code"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'customer_edit' customer.pk %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'customer_delete' customer.pk %}" class="btn btn-sm btn-danger" onclick="return confirm('هل أنت متأكد من الحذف؟')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center">لا يوجد عملاء مسجلين</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
