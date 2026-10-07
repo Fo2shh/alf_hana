@@ -39,25 +39,32 @@ fi
 
 echo "Git is available"
 
-# Check if project directory exists
-if [ ! -d "$TARGET_DIR" ]; then
+# Check if manage.py exists in current directory (Codespaces scenario)
+if [ -f "manage.py" ]; then
     echo ""
-    echo "Project directory not found at $TARGET_DIR"
-    echo "Downloading project from GitHub..."
-    git clone "$REPO_URL" "$TARGET_DIR"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}ERROR: Failed to clone repository${NC}"
-        exit 1
-    fi
-    echo "Project downloaded successfully"
+    echo "Django project detected in current directory"
+    echo "Using current directory"
+    echo ""
 else
+    # Check if project directory exists
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo ""
+        echo "Project directory not found at $TARGET_DIR"
+        echo "Downloading project from GitHub..."
+        git clone "$REPO_URL" "$TARGET_DIR"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}ERROR: Failed to clone repository${NC}"
+            exit 1
+        fi
+        echo "Project downloaded successfully"
+    else
+        echo ""
+        echo "Using existing project at $TARGET_DIR"
+    fi
+
     echo ""
-    echo "Using existing project at $TARGET_DIR"
+    cd "$TARGET_DIR"
 fi
-
-echo ""
-
-cd "$TARGET_DIR"
 
 if [ "$1" == "--silent" ]; then
     echo "[1/7] Installing required packages..."
