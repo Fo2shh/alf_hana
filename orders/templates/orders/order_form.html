@@ -799,6 +799,14 @@
     .select2-container--default .select2-selection--single .select2-selection__clear:hover {
         color: #c82333 !important;
     }
+
+    .custom-item-form {
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        max-width: 400px;
+        margin: 0 auto;
+    }
 </style>
 {% endblock %}
 
@@ -1262,6 +1270,7 @@
         const tabs = document.getElementById('categoryTabs');
         tabs.innerHTML = '';
         tabs.appendChild(makeTabBtn('__ALL__', 'الكل (' + MENU_DATA.length + ')', activeCategoryId === '__ALL__'));
+        tabs.appendChild(makeTabBtn('__CUSTOM__', 'مخصص', activeCategoryId === '__CUSTOM__'));
         cats.forEach(c => {
             const count = MENU_DATA.filter(it => it.c === c.id).length;
             tabs.appendChild(makeTabBtn(c.id, c.name + ' (' + count + ')', activeCategoryId === c.id));
@@ -1297,6 +1306,40 @@
         const info = document.getElementById('gridInfo');
         const visibleCount = document.getElementById('visibleCount');
         grid.innerHTML = '';
+
+        // Show custom item form when custom category is selected
+        if (activeCategoryId === '__CUSTOM__') {
+            info.textContent = 'مخصص';
+            visibleCount.textContent = '1';
+            empty.style.display = 'none';
+
+            const customForm = document.createElement('div');
+            customForm.className = 'custom-item-form';
+            customForm.innerHTML = `
+                <div class="form-group mb-3">
+                    <label class="form-label">اسم الصنف <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="customItemName" placeholder="أدخل اسم الصنف المخصص">
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">السعر <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="customItemPrice" placeholder="أدخل السعر" min="0">
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">الوصف (اختياري)</label>
+                    <textarea class="form-control" id="customItemDescription" rows="2" placeholder="أدخل وصف الصنف المخصص (اختياري)"></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">الكمية</label>
+                    <input type="number" class="form-control" id="customItemQuantity" value="1" min="1">
+                </div>
+                <button type="button" class="btn btn-primary w-100" onclick="addCustomItem()">
+                    <i class="bi bi-plus-circle"></i> إضافة للسلة
+                </button>
+            `;
+            grid.appendChild(customForm);
+            return;
+        }
+
         const items = getFilteredItems();
         visibleCount.textContent = items.length;
         info.textContent = activeCategoryId === '__ALL__'
@@ -1431,14 +1474,15 @@
 
             const hasDisc = Number.isInteger(item.discount) && item.discount > 0;
             const lineTotal = (Number(item.price) || 0) * item.quantity;
+            const isCustom = item.isCustom || false;
 
             row.innerHTML = `
                 <div class="inv-idx">${idx + 1}</div>
                 <div class="inv-info">
                     <div class="inv-name"></div>
                     <div class="inv-meta">
-                        ${item.regularPrice > 0 ? `<span>الوحدة: ${item.regularPrice} ج.م</span>` : `<span class="inv-weight">⭐ حسب الوزن</span>`}
-                        ${hasDisc ? `<span class="inv-disc">خصم ${item.discount} ج.م</span>` : ''}
+                        ${isCustom ? '<span class="inv-weight">⭐ مخصص</span>' : (item.regularPrice > 0 ? `<span>الوحدة: ${item.regularPrice} ج.م</span>` : `<span class="inv-weight">⭐ حسب الوزن</span>`)}
+                        ${hasDisc && !isCustom ? `<span class="inv-disc">خصم ${item.discount} ج.م</span>` : ''}
                     </div>
                 </div>
                 <div class="inv-qty">
@@ -1447,11 +1491,13 @@
                     <button type="button" title="زيادة" onclick="changeQuantity(${idx}, 1)">+</button>
                 </div>
                 <div class="inv-actions">
+                    ${!isCustom ? `
                     <button type="button" class="inv-act-btn act-disc"
                             title="${hasDisc ? 'تعديل الخصم' : 'إضافة خصم'}"
                             onclick="toggleItemDiscount(${idx})">
                         <i class="bi ${hasDisc ? 'bi-percent' : 'bi-tag'}"></i>
                     </button>
+                    ` : ''}
                     <button type="button" class="inv-act-btn act-del"
                             title="حذف الصنف"
                             onclick="removeItem(${idx})">
@@ -1459,10 +1505,10 @@
                     </button>
                 </div>
                 <div class="inv-price-col">
-                    ${hasDisc ? `<div class="inv-unit-price">${(item.regularPrice - item.discount)} × ${item.quantity}</div>` : `<div class="inv-unit-price">${item.regularPrice} × ${item.quantity}</div>`}
+                    ${hasDisc && !isCustom ? `<div class="inv-unit-price">${(item.regularPrice - item.discount)} × ${item.quantity}</div>` : `<div class="inv-unit-price">${item.regularPrice} × ${item.quantity}</div>`}
                     <div class="inv-line-total">${lineTotal.toFixed(0)} ج.م</div>
                 </div>
-                ${item.discountOpen ? `
+                ${!isCustom && item.discountOpen ? `
                 <div class="inv-disc-row">
                     <label for="itemDiscount${idx}"><i class="bi bi-tag-fill"></i> خصم بالجنيه</label>
                     <input id="itemDiscount${idx}" type="number" min="0" max="${item.regularPrice}" step="1"
@@ -1530,6 +1576,64 @@
     }
 
     /* ============================================================
+       CUSTOM ITEM HANDLER
+       ============================================================ */
+    function addCustomItem() {
+        const name = (document.getElementById('customItemName').value || '').trim();
+        const price = parseInt(document.getElementById('customItemPrice').value) || 0;
+        const description = (document.getElementById('customItemDescription').value || '').trim();
+        const quantity = parseInt(document.getElementById('customItemQuantity').value) || 1;
+
+        if (!name) {
+            alert('يرجى إدخال اسم الصنف المخصص');
+            document.getElementById('customItemName').focus();
+            return;
+        }
+        if (price < 0) {
+            alert('يرجى إدخال سعر صحيح');
+            document.getElementById('customItemPrice').focus();
+            return;
+        }
+        if (quantity < 1) {
+            alert('الكمية يجب أن تكون 1 على الأقل');
+            document.getElementById('customItemQuantity').focus();
+            return;
+        }
+
+        // Check if same custom item already exists
+        const existing = selectedItems.find(s => s.isCustom && s.name === name);
+        if (existing) {
+            existing.quantity += quantity;
+        } else {
+            selectedItems.push({
+                id: null,  // null indicates custom item
+                name: name,
+                price: price,
+                regularPrice: price,
+                discount: 0,
+                discountOpen: false,
+                quantity: quantity,
+                isCustom: true,
+                description: description
+            });
+        }
+
+        // Clear form
+        document.getElementById('customItemName').value = '';
+        document.getElementById('customItemPrice').value = '';
+        document.getElementById('customItemDescription').value = '';
+        document.getElementById('customItemQuantity').value = '1';
+
+        // Switch back to all items view
+        activeCategoryId = '__ALL__';
+        renderTabs();
+        renderGrid();
+        renderSelectedItems();
+        updateTotal();
+        updateSelectedBadgeCount();
+    }
+
+    /* ============================================================
        TOTALS + SUBMIT
        ============================================================ */
     function updateTotal() {
@@ -1573,7 +1677,8 @@
 
         // ---- 2) Items / discounts
         if (selectedItems.length === 0) { alert('يرجى اختيار صنف واحد على الأقل'); return; }
-        if (selectedItems.some(item => !Number.isInteger(item.discount) || item.discount < 0 || item.discount > item.regularPrice)) {
+        // Validate discounts only for non-custom items
+        if (selectedItems.some(item => !item.isCustom && (!Number.isInteger(item.discount) || item.discount < 0 || item.discount > item.regularPrice))) {
             alert('يجب أن يكون الخصم عددًا صحيحًا لا يتجاوز سعر الوحدة'); return;
         }
         document.getElementById('itemsData').value = JSON.stringify(selectedItems);

@@ -177,7 +177,10 @@
         <div class="items-list">
             {% for item in items %}
             <article class="receipt-item">
-                <div class="item-name">{{ item.menu_item.name }}</div>
+                <div class="item-name">{{ item.item_name }}</div>
+                {% if item.custom_item_description %}
+                <div style="font-size: 10px; color: #666; margin-top: 2px;">{{ item.custom_item_description }}</div>
+                {% endif %}
                 <div class="item-meta">
                     <span>الكمية: <bdi class="receipt-amount">{{ item.quantity }}</bdi></span>
                     <span>السعر: <bdi class="receipt-amount">{{ item.price|floatformat:0 }} ج.م</bdi></span>

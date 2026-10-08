@@ -49,21 +49,44 @@ def _prepare_order_items(items_data, existing_regular_prices=None, existing_disc
         if not isinstance(item_data, dict):
             raise ValueError('بيانات الصنف غير صالحة')
 
-        menu_item = get_object_or_404(MenuItem, pk=item_data.get('id'))
-        quantity = int(item_data.get('quantity', 0))
-        if quantity < 1:
-            raise ValueError('الكمية غير صالحة')
+        # Check if this is a custom item (id is null or missing)
+        is_custom = item_data.get('isCustom', False) or item_data.get('id') is None
 
-        regular_price = existing_regular_prices.get(menu_item.pk, menu_item.price)
-        discount = _parse_whole_price(
-            item_data.get('discount', existing_discounts.get(menu_item.pk, 0))
-        )
-        if discount > regular_price:
-            raise ValueError('الخصم لا يمكن أن يتجاوز سعر الوحدة')
-        price = regular_price - discount
+        if is_custom:
+            # Handle custom item
+            name = item_data.get('name', '').strip()
+            price = Decimal(str(item_data.get('price', 0)))
+            description = item_data.get('description', '').strip()
+            quantity = int(item_data.get('quantity', 0))
 
-        prepared_items.append((menu_item, quantity, regular_price, price))
-        subtotal += price * quantity
+            if not name:
+                raise ValueError('اسم الصنف المخصص مطلوب')
+            if quantity < 1:
+                raise ValueError('الكمية غير صالحة')
+            if price < 0:
+                raise ValueError('السعر غير صالح')
+
+            # Custom item: (None, name, price, description, quantity, is_custom=True)
+            prepared_items.append((None, name, price, description, quantity, True))
+            subtotal += price * quantity
+        else:
+            # Handle regular menu item
+            menu_item = get_object_or_404(MenuItem, pk=item_data.get('id'))
+            quantity = int(item_data.get('quantity', 0))
+            if quantity < 1:
+                raise ValueError('الكمية غير صالحة')
+
+            regular_price = existing_regular_prices.get(menu_item.pk, menu_item.price)
+            discount = _parse_whole_price(
+                item_data.get('discount', existing_discounts.get(menu_item.pk, 0))
+            )
+            if discount > regular_price:
+                raise ValueError('الخصم لا يمكن أن يتجاوز سعر الوحدة')
+            price = regular_price - discount
+
+            # Regular item: (menu_item, quantity, regular_price, price, is_custom=False)
+            prepared_items.append((menu_item, quantity, regular_price, price, False))
+            subtotal += price * quantity
 
     return prepared_items, subtotal
 
@@ -261,14 +284,30 @@ def order_create(request):
         order.save()
         
         # إضافة الأصناف
-        for menu_item, quantity, regular_price, price in prepared_items:
-            OrderItem.objects.create(
-                order=order,
-                menu_item=menu_item,
-                quantity=quantity,
-                regular_price=regular_price,
-                price=price
-            )
+        for item_data in prepared_items:
+            if len(item_data) == 6 and item_data[5]:  # is_custom=True
+                # Custom item: (None, name, price, description, quantity, True)
+                _, name, price, description, quantity, _ = item_data
+                OrderItem.objects.create(
+                    order=order,
+                    menu_item=None,
+                    custom_item_name=name,
+                    custom_item_price=price,
+                    custom_item_description=description,
+                    quantity=quantity,
+                    regular_price=price,
+                    price=price
+                )
+            else:
+                # Regular item: (menu_item, quantity, regular_price, price, False)
+                menu_item, quantity, regular_price, price, _ = item_data
+                OrderItem.objects.create(
+                    order=order,
+                    menu_item=menu_item,
+                    quantity=quantity,
+                    regular_price=regular_price,
+                    price=price
+                )
         
         order.subtotal = subtotal
         order.total = subtotal + delivery_fee
@@ -339,14 +378,14 @@ def order_edit(request, pk):
     if request.user.role not in ('admin', 'kitchen'):
         return HttpResponseForbidden()
     order = get_object_or_404(Order, pk=pk)
-    
+
     if request.method == 'POST':
         existing_regular_prices = dict(
-            order.items.values_list('menu_item_id', 'regular_price')
+            order.items.filter(menu_item__isnull=False).values_list('menu_item_id', 'regular_price')
         )
         existing_discounts = {
             item.menu_item_id: item.discount_per_unit
-            for item in order.items.all()
+            for item in order.items.filter(menu_item__isnull=False)
         }
         try:
             items_data = json.loads(request.POST.get('items_data') or '[]')
@@ -378,26 +417,42 @@ def order_edit(request, pk):
         # تعديل رسوم التوصيل والملاحظات
         order.delivery_fee = delivery_fee
         order.notes = request.POST.get('notes', '')
-        
+
         # حذف جميع الأصناف القديمة
         order.items.all().delete()
-        
+
         # إضافة الأصناف الجديدة
-        for menu_item, quantity, regular_price, price in prepared_items:
-            OrderItem.objects.create(
-                order=order,
-                menu_item=menu_item,
-                quantity=quantity,
-                regular_price=regular_price,
-                price=price
-            )
-        
+        for item_data in prepared_items:
+            if len(item_data) == 6 and item_data[5]:  # is_custom=True
+                # Custom item: (None, name, price, description, quantity, True)
+                _, name, price, description, quantity, _ = item_data
+                OrderItem.objects.create(
+                    order=order,
+                    menu_item=None,
+                    custom_item_name=name,
+                    custom_item_price=price,
+                    custom_item_description=description,
+                    quantity=quantity,
+                    regular_price=price,
+                    price=price
+                )
+            else:
+                # Regular item: (menu_item, quantity, regular_price, price, False)
+                menu_item, quantity, regular_price, price, _ = item_data
+                OrderItem.objects.create(
+                    order=order,
+                    menu_item=menu_item,
+                    quantity=quantity,
+                    regular_price=regular_price,
+                    price=price
+                )
+
         order.subtotal = subtotal
         order.total = subtotal + order.delivery_fee
         order.save()
-        
+
         return redirect('order_detail', pk=order.pk)
-    
+
     ctx = _build_menu_context()
     ctx['order'] = order
     ctx['customers'] = Customer.objects.all()

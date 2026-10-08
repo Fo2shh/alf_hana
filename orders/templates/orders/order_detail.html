@@ -142,7 +142,12 @@
                         <tbody>
                             {% for item in items %}
                             <tr>
-                                <td>{{ item.menu_item.name }}</td>
+                                <td>
+                                    {{ item.item_name }}
+                                    {% if item.custom_item_description %}
+                                    <br><small class="text-muted">{{ item.custom_item_description }}</small>
+                                    {% endif %}
+                                </td>
                                 <td>{{ item.quantity }}</td>
                                 <td>{{ item.price|floatformat:0 }} ج.م</td>
                                 {% if has_discounts %}

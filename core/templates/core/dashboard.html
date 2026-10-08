@@ -109,7 +109,7 @@
                                     <template id="order-items-{{ order.pk }}">
                                         <ul class="mb-0 ps-3">
                                             {% for item in order.items.all %}
-                                            <li>{{ item.menu_item.name }} × {{ item.quantity }}</li>
+                                            <li>{{ item.item_name }} × {{ item.quantity }}</li>
                                             {% empty %}
                                             <li>لا توجد أصناف</li>
                                             {% endfor %}

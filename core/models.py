@@ -195,29 +195,43 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """أصناف الطلب"""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name='الطلب')
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT, verbose_name='الصنف')
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT, null=True, blank=True, verbose_name='الصنف')
+    custom_item_name = models.CharField(max_length=200, blank=True, null=True, verbose_name='اسم الصنف المخصص')
+    custom_item_price = models.DecimalField(max_digits=10, decimal_places=0, blank=True, null=True, verbose_name='سعر الصنف المخصص')
+    custom_item_description = models.TextField(blank=True, null=True, verbose_name='وصف الصنف المخصص')
     quantity = models.IntegerField(default=1, verbose_name='الكمية')
-    regular_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name='سعر القائمة')
+    regular_price = models.DecimalField(max_digits=10, decimal_places=0, blank=True, null=True, verbose_name='سعر القائمة')
     price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name='السعر')
     subtotal = models.DecimalField(max_digits=10, decimal_places=0, verbose_name='المجموع')
     notes = models.TextField(blank=True, null=True, verbose_name='ملاحظات')
-    
+
     class Meta:
         verbose_name = 'صنف في الطلب'
         verbose_name_plural = 'أصناف الطلب'
-    
+
     def save(self, *args, **kwargs):
-        if self.regular_price is None:
+        if self.menu_item and self.regular_price is None:
             self.regular_price = self.menu_item.price
+        elif self.custom_item_price and self.regular_price is None:
+            self.regular_price = self.custom_item_price
         self.subtotal = self.price * self.quantity
         super().save(*args, **kwargs)
 
     @property
     def discount_per_unit(self):
-        return max(self.regular_price - self.price, 0)
+        if self.regular_price:
+            return max(self.regular_price - self.price, 0)
+        return 0
+
+    @property
+    def item_name(self):
+        """إرجاع اسم الصنف (من المنيو أو مخصص)"""
+        if self.menu_item:
+            return self.menu_item.name
+        return self.custom_item_name or 'صنف غير محدد'
 
     def __str__(self):
-        return f"{self.menu_item.name} x{self.quantity}"
+        return f"{self.item_name} x{self.quantity}"
 
 
 class DriverLocation(models.Model):
