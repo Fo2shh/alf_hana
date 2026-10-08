@@ -223,15 +223,11 @@
     {% endif %}
     
     <div class="footer">
+        {% if order.customer and order.customer.qr_code %}
         <div class="qr-code">
-            {% if order.customer and order.customer.qr_code %}
-                <img src="{{ order.customer.qr_code.url }}?t={{ order.customer.updated_at|date:'U' }}" alt="QR Code">
-            {% else %}
-                <div style="width: 40mm; height: 40mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center;">
-                    لا يوجد QR
-                </div>
-            {% endif %}
+            <img src="{{ order.customer.qr_code.url }}?t={{ order.customer.updated_at|date:'U' }}" alt="QR Code">
         </div>
+        {% endif %}
         <div class="restaurant-phone">{{ restaurant_phone }}</div>
         <div style="font-size: 10px; margin-top: 5px;">شكراً لتعاملكم معنا</div>
     </div>

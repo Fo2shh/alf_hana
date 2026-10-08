@@ -29,8 +29,10 @@ def dashboard(request):
     order_range = 'all' if request.GET.get('range') == 'all' else 'today'
     orders = Order.objects.all()
     if order_range == 'today':
-        today = timezone.now().date()
-        orders = orders.filter(created_at__date=today)
+        from datetime import timedelta
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        orders = orders.filter(created_at__gte=today_start, created_at__lt=today_end)
     orders = orders.select_related('customer', 'driver').prefetch_related('items__menu_item')
     if request.user.role == 'driver':
         orders = orders.filter(driver=request.user)
