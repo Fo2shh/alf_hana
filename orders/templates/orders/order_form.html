@@ -5,276 +5,1183 @@
 
 {% block extra_css %}
 <style>
-    .order-item {
-        margin-bottom: 0.75rem;
+    /* ============================================================
+       CASHIER-FIRST 2-COLUMN FIXED LAYOUT (POS Best Practices)
+       Left  = Menu (search, quick, tabs, grid - 65%)
+       Right = Fixed Cart (invoice-style - 35%)
+       Collapses to stacked vertical on mobile (<960px).
+       ============================================================ */
+    :root {
+        --cashier-topbar-h: 72px;
+        --cashier-gap: 1rem;
     }
 
-    /* تكبير ارتفاع مربع الاختيار المتعدد select2 */
-    .select2-container--default .select2-selection--multiple {
-        min-height: 120px !important;
-        padding: 8px !important;
+    html, body { height: 100%; }
+    body { background: #f4f6fb; }
+
+    .page-wrapper {
+        max-width: 1900px;
+        margin: 0 auto;
+        padding: 0 0.75rem var(--cashier-gap);
     }
 
-    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
-        display: block !important;
+    /* =============== TOP BAR (sticky) =============== */
+    .cashier-topbar {
+        position: sticky; top: 0; z-index: 20;
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+        box-shadow: 0 2px 10px rgba(20, 30, 60, 0.05);
+        border-radius: 0 0 0.75rem 0.75rem;
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: center;
+    }
+    .cashier-topbar .page-title {
+        display: flex; align-items: center; gap: 0.55rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1f2328;
+        white-space: nowrap;
+    }
+    .cashier-topbar .page-title i { color: var(--primary); font-size: 1.25rem; }
+    .cashier-topbar .customer-block { min-width: 0; }
+
+    /* =============== MAIN 2-COL GRID =============== */
+    .cashier-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+        gap: var(--cashier-gap);
+        margin-top: var(--cashier-gap);
+    }
+    @media (max-width: 960px) {
+        .cashier-grid { grid-template-columns: 1fr; }
     }
 
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        margin: 4px 4px 4px 0 !important;
+    /* Both panels share the max-height trick (sticky viewport based) */
+    .cashier-panel {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 0.85rem;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(20, 30, 60, 0.04);
+        /* Sticky from top + allow natural short page. The 80vh makes internal
+           scroll work gracefully even when page content is minimal. */
+        position: sticky;
+        top: calc(var(--cashier-topbar-h) + 0.5rem);
+        max-height: calc(100vh - var(--cashier-topbar-h) - 1.25rem);
+        display: flex;
+        flex-direction: column;
+    }
+    @media (max-width: 960px) {
+        .cashier-panel {
+            position: relative;
+            top: auto;
+            max-height: none;
+        }
+        .cashier-panel.cart-panel { position: sticky; bottom: 0; z-index: 15; }
     }
 
-    @media (max-width: 640px) {
-        .order-item .btn {
-            margin: 2px;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-        }
+    /* =============== LEFT PANEL: MENU PICKER =============== */
+    .menu-panel .panel-scroll {
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+    }
+    .menu-panel .panel-scroll::-webkit-scrollbar { width: 8px; }
+    .menu-panel .panel-scroll::-webkit-scrollbar-thumb { background: #d6dae3; border-radius: 4px; }
 
-        .order-item .form-control {
-            font-size: 0.875rem;
-            padding: 0.375rem 0.5rem;
-        }
+    /* ---- Search ---- */
+    .picker-search {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, #fafafa 0%, #f3f6ff 100%);
+    }
+    .picker-search .search-wrap { position: relative; }
+    .picker-search .search-wrap i {
+        position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+        color: #9aa0ac; font-size: 1.1rem; pointer-events: none;
+    }
+    .picker-search input {
+        width: 100%;
+        padding: 0.85rem 2.75rem 0.85rem 1rem;
+        border: 2px solid #e6e8ee;
+        border-radius: 0.6rem;
+        font-size: 1rem;
+        outline: none;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+    .picker-search input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(13,110,253,0.08);
+    }
+    .picker-summary {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 0.6rem; font-size: 0.82rem; color: #6c757d;
+        flex-wrap: wrap; gap: 0.5rem;
+    }
+    .picker-summary .badge-selected-count {
+        background: var(--primary); color: #fff;
+        padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;
+    }
+    .picker-summary .clear-all-btn {
+        color: #dc3545; border: none; background: none;
+        font-size: 0.85rem; cursor: pointer; padding: 0.2rem 0.4rem;
+    }
+    .picker-summary .clear-all-btn:hover { text-decoration: underline; }
 
-        .order-total {
-            flex-direction: column;
-            text-align: center;
-            gap: 0.5rem;
-        }
+    /* ---- Quick strip ---- */
+    .quick-strip {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: #fff8e6;
+    }
+    .quick-strip-title {
+        font-size: 0.8rem; color: #9c7a00; margin-bottom: 0.55rem;
+        display: flex; align-items: center; gap: 0.35rem; font-weight: 600;
+    }
+    .quick-strip-list {
+        display: flex; gap: 0.5rem; overflow-x: auto;
+        padding-bottom: 0.3rem; scrollbar-width: thin;
+    }
+    .quick-strip-list::-webkit-scrollbar { height: 4px; }
+    .quick-chip {
+        flex-shrink: 0; background: #fff; border: 1.5px solid #ffd166;
+        border-radius: 999px; padding: 0.5rem 0.9rem 0.5rem 0.5rem;
+        display: flex; align-items: center; gap: 0.45rem;
+        cursor: pointer; transition: all 0.15s ease; min-height: 44px;
+    }
+    .quick-chip:hover {
+        transform: translateY(-1px); background: #fffaf0;
+        box-shadow: 0 2px 6px rgba(255,170,0,0.25);
+    }
+    .quick-chip .chip-icon {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: linear-gradient(135deg,#ffae00,#ff7a00);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 0.85rem; flex-shrink: 0;
+    }
+    .quick-chip .chip-text { display: flex; flex-direction: column; line-height: 1.1; }
+    .quick-chip .chip-name { font-size: 0.85rem; font-weight: 600; color: #1f2328; }
+    .quick-chip .chip-price { font-size: 0.75rem; color: #c47a00; }
 
-        .order-total strong {
-            font-size: 1.25rem;
-        }
+    /* ---- Tabs ---- */
+    .tab-bar {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: #fafbfd;
+        display: flex; gap: 0.45rem; overflow-x: auto; scrollbar-width: thin;
+    }
+    .tab-bar::-webkit-scrollbar { height: 4px; }
+    .tab-btn {
+        flex-shrink: 0; border: 1.5px solid #dce0e7; background: #fff;
+        color: #4a5160; padding: 0.5rem 0.95rem;
+        border-radius: 0.5rem; font-size: 0.88rem; font-weight: 500;
+        cursor: pointer; min-height: 42px;
+        transition: all 0.15s ease;
+        display: flex; align-items: center; gap: 0.4rem;
+    }
+    .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tab-btn.active {
+        background: var(--primary); border-color: var(--primary); color: #fff;
+        box-shadow: 0 2px 6px rgba(13,110,253,0.3);
+    }
+    .tab-btn .tab-count {
+        font-size: 0.7rem; background: rgba(0,0,0,0.07);
+        padding: 0.05rem 0.45rem; border-radius: 999px;
+    }
+    .tab-btn.active .tab-count { background: rgba(255,255,255,0.2); }
 
-        .order-actions {
-            flex-direction: column-reverse;
-        }
+    /* ---- Grid (inside scroll) ---- */
+    .grid-wrap { padding: 1rem; }
+    .menu-grid {
+        display: grid; gap: 0.65rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    @media (min-width: 780px)  { .menu-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (min-width: 1280px) { .menu-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-        .order-actions .btn {
-            width: 100%;
-            margin: 0.25rem 0;
-        }
+    .item-card {
+        position: relative;
+        border: 1.5px solid #e6e8ee;
+        background: #fff;
+        border-radius: 0.65rem;
+        padding: 0.7rem 0.7rem 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        min-height: 102px;
+        display: flex; flex-direction: column; justify-content: space-between;
+        gap: 0.4rem;
+        text-align: right;
+    }
+    .item-card:hover {
+        border-color: var(--primary); transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(20,30,60,0.07);
+    }
+    .item-card.selected {
+        border-color: #198754; background: #f0fff6;
+        box-shadow: 0 0 0 2px rgba(25,135,84,0.15);
+    }
+    .item-card.weight-hint { background: #fff7ee; border-color: #ffcf9c; }
+    .item-card.weight-hint.selected { background: #fff1e0; border-color: #e67e22; }
 
-        .new-customer-fields .form-control {
-            font-size: 0.875rem;
-        }
+    .item-card .card-top {
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 0.3rem;
+    }
+    .item-card .cat-tag {
+        font-size: 0.65rem; color: #7a8190; background: #f1f3f8;
+        padding: 0.08rem 0.4rem; border-radius: 999px;
+    }
+    .item-card.weight-hint .cat-tag { background: #ffe7cc; color: #b06100; }
 
-        .order-page .card-body {
-            padding: 1rem;
-        }
+    .item-card .qty-badge {
+        position: absolute; top: -8px; right: -8px;
+        min-width: 26px; height: 26px; padding: 0 6px;
+        background: var(--primary); color: #fff; border-radius: 13px;
+        font-size: 0.75rem; font-weight: 700;
+        display: none; align-items: center; justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid #fff;
+    }
+    .item-card.selected .qty-badge { display: flex; background: #198754; }
+
+    .item-card .card-name {
+        font-size: 0.9rem; font-weight: 600; color: #1f2328;
+        line-height: 1.3; min-height: 2.34em;
+    }
+    .item-card .card-bottom {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;
+    }
+    .item-card .card-price {
+        font-size: 0.95rem; font-weight: 700; color: var(--primary);
+    }
+    .item-card .card-price.price-zero { color: #b06100; font-size: 0.82rem; }
+    .item-card .add-btn {
+        width: 34px; height: 34px; border-radius: 50%;
+        background: var(--primary); color: #fff;
+        border: none; font-size: 1.15rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: transform 0.1s ease; flex-shrink: 0;
+    }
+    .item-card .add-btn:hover { background: #0a58ca; }
+    .item-card .add-btn:active { transform: scale(0.92); }
+    .item-card.selected .add-btn { background: #198754; }
+
+    .grid-empty {
+        padding: 2rem 1rem; text-align: center; color: #6c757d; font-size: 0.95rem;
+    }
+    .grid-empty i {
+        font-size: 2rem; color: #ced4da; margin-bottom: 0.5rem; display: block;
+    }
+
+    /* =============== RIGHT PANEL: FIXED INVOICE CART =============== */
+    .cart-panel { background: #fafcff; }
+    .cart-header {
+        padding: 0.95rem 1.1rem;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, #1e3a8a 0%, var(--primary) 100%);
+        color: #fff;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .cart-header .ch-title {
+        display: flex; align-items: center; gap: 0.5rem;
+        font-weight: 700; font-size: 1rem;
+    }
+    .cart-header .ch-count {
+        background: rgba(255,255,255,0.18);
+        padding: 0.15rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+    }
+
+    .cart-body {
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        padding: 0.75rem 1rem;
+    }
+    .cart-body::-webkit-scrollbar { width: 8px; }
+    .cart-body::-webkit-scrollbar-thumb { background: #cdd3de; border-radius: 4px; }
+
+    /* Empty state */
+    .cart-empty {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #8a93a5;
+    }
+    .cart-empty i {
+        font-size: 3rem;
+        color: #dfe3eb;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .cart-empty strong {
+        display: block;
+        color: #555c6b;
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+    }
+    .cart-empty small { font-size: 0.82rem; }
+
+    /* Invoice item row */
+    .inv-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto auto;
+        gap: 0.5rem;
+        align-items: start;
+        padding: 0.65rem 0.35rem;
+        border-bottom: 1px dashed #e1e5ee;
+    }
+    .inv-row:last-child { border-bottom: none; }
+    .inv-idx {
+        font-size: 0.78rem;
+        color: #8a93a5;
+        font-weight: 700;
+        min-width: 22px;
+        padding-top: 2px;
+    }
+    .inv-info { min-width: 0; }
+    .inv-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1f2328;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+    .inv-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.15rem;
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .inv-weight {
+        display: inline-block;
+        background: #fff1e0;
+        color: #b06100;
+        border-radius: 999px;
+        padding: 0.03rem 0.45rem;
+        font-size: 0.7rem;
+    }
+    .inv-disc {
+        color: #198754;
+        font-weight: 600;
+    }
+    .inv-qty {
+        display: flex;
+        align-items: center;
+        gap: 0.15rem;
+        background: #f0f3fa;
+        border-radius: 0.4rem;
+        padding: 0.1rem;
+    }
+    .inv-qty button {
+        width: 26px; height: 26px;
+        border-radius: 0.3rem;
+        border: none;
+        background: #fff;
+        color: #4a5160;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.1s ease;
+        font-size: 0.9rem;
+    }
+    .inv-qty button:hover { background: var(--primary); color: #fff; }
+    .inv-qty span {
+        font-weight: 700;
+        color: #1f2328;
+        min-width: 26px;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+    .inv-actions {
+        display: flex;
+        gap: 0.25rem;
+        align-items: center;
+    }
+    .inv-act-btn {
+        width: 30px; height: 30px;
+        border: none;
+        border-radius: 0.4rem;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+        transition: all 0.1s ease;
+    }
+    .inv-act-btn.act-disc { background: #e8f7ee; color: #198754; }
+    .inv-act-btn.act-disc:hover { background: #198754; color: #fff; }
+    .inv-act-btn.act-del { background: #fde8ea; color: #dc3545; }
+    .inv-act-btn.act-del:hover { background: #dc3545; color: #fff; }
+    .inv-price-col {
+        text-align: left;
+        min-width: 72px;
+    }
+    .inv-unit-price {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: left;
+    }
+    .inv-line-total {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1f2328;
+        text-align: left;
+    }
+
+    /* Inline discount input inside row */
+    .inv-disc-row {
+        grid-column: 2 / -1;
+        margin-top: 0.35rem;
+        background: #f0fff6;
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .inv-disc-row label {
+        font-size: 0.8rem;
+        color: #198754;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .inv-disc-row input {
+        flex: 1;
+        padding: 0.3rem 0.5rem;
+        border: 1.5px solid #86d6a9;
+        border-radius: 0.35rem;
+        font-size: 0.88rem;
+        outline: none;
+    }
+    .inv-disc-row input:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 2px rgba(25,135,84,0.15);
+    }
+    .inv-disc-row small { color: #6c757d; font-size: 0.75rem; white-space: nowrap; }
+    .inv-disc-row .btn-clear-disc {
+        background: #fff;
+        border: 1px solid #86d6a9;
+        color: #198754;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.35rem;
+        cursor: pointer;
+        font-size: 0.78rem;
+    }
+    .inv-disc-row .btn-clear-disc:hover { background: #198754; color: #fff; }
+
+    /* Cart footer: summary + actions (fixed bottom of right column) */
+    .cart-footer {
+        border-top: 2px solid #dce0ea;
+        background: #fff;
+        padding: 0.9rem 1.1rem 1rem;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.35rem 0;
+        font-size: 0.9rem;
+    }
+    .summary-row.subtotal { color: #4a5160; }
+    .summary-row .label { color: #6c757d; }
+    .summary-row .value { font-weight: 600; color: #1f2328; }
+    .summary-row.delivery { }
+    .summary-row.delivery input {
+        width: 120px;
+        text-align: center;
+        padding: 0.3rem 0.5rem;
+        border: 1.5px solid #d6dae3;
+        border-radius: 0.4rem;
+        font-size: 0.9rem;
+        outline: none;
+    }
+    .summary-row.delivery input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+    }
+    .summary-grand {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1f2328;
+        color: #fff;
+        padding: 0.75rem 1rem;
+        border-radius: 0.6rem;
+        margin-top: 0.65rem;
+    }
+    .summary-grand .label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: flex; align-items: center; gap: 0.4rem;
+    }
+    .summary-grand .label i { color: #ffd700; }
+    .summary-grand .value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+    }
+
+    .cart-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        margin-top: 0.9rem;
+    }
+    @media (max-width: 540px) {
+        .cart-actions { grid-template-columns: 1fr; }
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #198754 0%, #0f6e42 100%);
+        color: #fff;
+        padding: 0.75rem 0.75rem;
+        border: none;
+        border-radius: 0.6rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+        box-shadow: 0 3px 10px rgba(25,135,84,0.25);
+        transition: transform 0.1s ease;
+    }
+    .btn-save:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .btn-cancel {
+        background: #fff;
+        border: 1.5px solid #d6dae3;
+        color: #4a5160;
+        padding: 0.75rem 0.75rem;
+        border-radius: 0.6rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+        text-decoration: none;
+        transition: all 0.1s ease;
+    }
+    .btn-cancel:hover { border-color: #6c757d; color: #212529; background: #f8f9fa; }
+
+    /* Notes row — moved to right column below items summary */
+    .notes-wrap { margin-top: 0.75rem; }
+    .notes-wrap label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4a5160;
+        margin-bottom: 0.3rem;
+    }
+    .notes-wrap textarea {
+        width: 100%;
+        border: 1.5px solid #d6dae3;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.88rem;
+        outline: none;
+        min-height: 72px;
+        resize: vertical;
+        font-family: inherit;
+    }
+    .notes-wrap textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(13,110,253,0.08);
+    }
+
+    @media (max-width: 960px) {
+        .cashier-topbar { grid-template-columns: 1fr; padding: 0.65rem 0.75rem; }
+        .grid-wrap { padding: 0.7rem; }
+        .item-card { padding: 0.55rem 0.55rem 0.6rem; min-height: 96px; }
+        .item-card .card-name { font-size: 0.85rem; }
+        .inv-line-total { font-size: 0.9rem; }
+        .summary-grand .value { font-size: 1.15rem; }
+    }
+
+    /* Validation & Alerts */
+    .alert-banner {
+        border-radius: 0.65rem;
+        padding: 0.8rem 1rem;
+        margin: 0.75rem 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+    .alert-banner.alert-danger {
+        background: #fff5f5;
+        color: #842029;
+        border: 1px solid #f5c2c7;
+        border-inline-start-width: 4px;
+        border-inline-start-color: #dc3545;
+    }
+    .alert-banner.alert-info {
+        background: #e7f5ff;
+        color: #055160;
+        border: 1px solid #b6e4ff;
+        border-inline-start-width: 4px;
+        border-inline-start-color: #0dcaf0;
+    }
+    .alert-banner i {
+        font-size: 1.1rem;
+        margin-top: 0.1rem;
+        flex-shrink: 0;
+    }
+    .alert-banner strong {
+        display: block;
+        margin-bottom: 0.2rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="order-page">
-        <div class="card order-card">
-            <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="bi bi-plus-circle"></i> طلب جديد
-                </h4>
+<div class="page-wrapper">
+
+    <!-- Server validation error banner (400 render on failure) -->
+    {% if validation_error %}
+    <div class="alert-banner alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+            <strong>تعذر حفظ الطلب</strong>
+            <span>{{ validation_error }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Hint banner for new users -->
+    <div class="alert-banner alert-info" role="alert">
+        <i class="bi bi-info-circle-fill"></i>
+        <div>
+            <strong>خطوات إضافة طلب جديد</strong>
+            <span>1) اختر عميلاً من القائمة أو أنشئ عميل جديد بالاسم والهاتف · 2) اختر الأصناف من البطاقات أو شريط الأكثر طلباً · 3) راجع الإجمالي ثم اضغط حفظ الطلب.</span>
+        </div>
+    </div>
+
+    <!-- ================= CASHIER TOP BAR ================= -->
+    <div class="cashier-topbar">
+        <div class="page-title">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>طلب جديد</span>
+        </div>
+
+        <div class="customer-block">
+            <label class="form-label fw-bold mb-1" style="font-size:0.82rem;">العميل</label>
+            <select class="form-select select2" id="customerSelect" name="customer_id" style="padding:0.4rem 0.7rem;font-size:0.9rem;">
+                <option value="">اختر عميلاً...</option>
+                <option value="new">+ عميل جديد</option>
+                {% for customer in customers %}
+                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- New customer fields (expandable) -->
+    <div id="newCustomerFields" class="mt-3 d-none">
+        <div class="card" style="border:1px solid var(--border);border-radius:0.85rem;">
+            <div class="card-body" style="padding:1rem;">
+                <h6 class="fw-bold mb-3"><i class="bi bi-person-plus"></i> بيانات العميل الجديد</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">الاسم</label>
+                        <input type="text" class="form-control" id="customerName" name="customer_name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">رقم الهاتف</label>
+                        <input type="text" class="form-control" id="customerPhone" name="customer_phone">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">العنوان</label>
+                        <input type="text" class="form-control" id="customerAddress" name="customer_address">
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <label class="form-label">رابط خرائط جوجل (اختياري)</label>
+                        <input type="url" class="form-control" id="customerGoogleMapsLink" name="customer_google_maps_link" placeholder="https://maps.app.goo.gl/...">
+                        <small class="text-muted">سيتم استخراج الإحداثيات تلقائياً</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">خط العرض</label>
+                        <input type="text" class="form-control" id="customerLatitude" name="customer_latitude" placeholder="24.7136">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">خط الطول</label>
+                        <input type="text" class="form-control" id="customerLongitude" name="customer_longitude" placeholder="46.6753">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="extractCoordinatesFromOrder()">
+                        <i class="bi bi-map"></i> استخراج الإحداثيات من الرابط
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="post" id="orderForm" class="order-form-grid">
-                    {% csrf_token %}
-                    
-                    <!-- اختيار العميل -->
-                    <div class="mb-4 order-field customer-field">
-                        <label class="form-label fw-bold">العميل</label>
-                        <select class="form-select select2" id="customerSelect" name="customer_id">
-                            <option value="">اختر عميلاً...</option>
-                            <option value="new">+ عميل جديد</option>
-                            {% for customer in customers %}
-                            <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- بيانات العميل الجديد -->
-                    <div id="newCustomerFields" class="mb-4 order-field order-field-wide d-none">
-                        <div class="new-customer-fields">
-                                <h6 class="fw-bold mb-3">بيانات العميل الجديد</h6>
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">الاسم</label>
-                                        <input type="text" class="form-control" id="customerName" name="customer_name">
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">رقم الهاتف</label>
-                                        <input type="text" class="form-control" id="customerPhone" name="customer_phone">
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">العنوان</label>
-                                        <input type="text" class="form-control" id="customerAddress" name="customer_address">
-                                    </div>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">رابط خرائط جوجل (اختياري)</label>
-                                        <input type="url" class="form-control" id="customerGoogleMapsLink" name="customer_google_maps_link" placeholder="https://maps.app.goo.gl/...">
-                                        <small class="text-muted">سيتم استخراج الإحداثيات تلقائياً</small>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label class="form-label">خط العرض</label>
-                                        <input type="text" class="form-control" id="customerLatitude" name="customer_latitude" placeholder="24.7136">
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label class="form-label">خط الطول</label>
-                                        <input type="text" class="form-control" id="customerLongitude" name="customer_longitude" placeholder="46.6753">
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="extractCoordinatesFromOrder()">
-                                        <i class="bi bi-map"></i> استخراج الإحداثيات من الرابط
-                                    </button>
-                                </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN 2-COL LAYOUT ================= -->
+    <form method="post" id="orderForm">
+        {% csrf_token %}
+
+        <div class="cashier-grid">
+
+            <!-- ===== LEFT: MENU PICKER ===== -->
+            <div class="cashier-panel menu-panel">
+
+                <div class="panel-scroll">
+                    <!-- SEARCH -->
+                    <div class="picker-search">
+                        <div class="search-wrap">
+                            <i class="bi bi-search"></i>
+                            <input type="search" id="menuSearchInput"
+                                   placeholder="ابحث باسم الصنف (Ctrl+K للتركيز)"
+                                   autocomplete="off">
+                        </div>
+                        <div class="picker-summary">
+                            <div>
+                                <span id="gridInfo">جميع الأقسام</span>
+                                <span class="mx-2">·</span>
+                                <span id="visibleCount">0</span> صنفاً ظاهرًا
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <span class="badge-selected-count" id="selectedBadgeCount">0 صنف</span>
+                                <button type="button" class="clear-all-btn" id="clearAllBtn" title="إفراغ الاختيارات">
+                                    <i class="bi bi-x-circle"></i> إفراغ الكل
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- اختيار الأصناف -->
-                    <div class="mb-4 order-field order-field-wide menu-field">
-                        <label class="form-label fw-bold">الأصناف</label>
-                        <select class="form-select select2" id="menuSelect" multiple>
-                            {% for item in menu_items %}
-                            <option value="{{ item.id }}" data-price="{{ item.price|unlocalize }}" data-category="{{ item.category.name }}">
-                                {{ item.name }} - {{ item.price|floatformat:0 }} ج.م ({{ item.category.name }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">يمكنك اختيار أكثر من صنف</small>
+
+                    <!-- QUICK STRIP -->
+                    <div class="quick-strip" id="quickStrip">
+                        <div class="quick-strip-title">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                            الأكثر طلباً — إضافة سريعة بضغطة واحدة
+                        </div>
+                        <div class="quick-strip-list" id="quickList"></div>
                     </div>
-                    
-                    <!-- الأصناف المختارة -->
-                    <div class="mb-4 order-field order-field-wide">
-                        <h6>الأصناف المختارة</h6>
-                        <div id="selectedItems"></div>
-                    </div>
-                    
-                    <!-- رسوم التوصيل -->
-                    <div class="mb-4 order-field delivery-field">
-                        <label class="form-label fw-bold">رسوم التوصيل</label>
-                        <input type="number" class="form-control" id="deliveryFee" name="delivery_fee" placeholder="أدخل رسوم التوصيل" min="0" step="1">
-                    </div>
-                    
-                    <!-- الملاحظات -->
-                    <div class="mb-4 order-field order-field-wide notes-field">
-                        <label class="form-label fw-bold">ملاحظات</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                    </div>
-                    
-                    <!-- الإجمالي -->
-                    <div class="mb-4 order-field order-field-wide">
-                        <div class="order-total">
-                            <span class="fw-bold">الإجمالي</span>
-                            <strong id="totalAmount">0 ج.م</strong>
+
+                    <!-- TABS -->
+                    <div class="tab-bar" id="categoryTabs" role="tablist"></div>
+
+                    <!-- GRID -->
+                    <div class="grid-wrap">
+                        <div class="menu-grid" id="menuGrid"></div>
+                        <div class="grid-empty" id="gridEmpty" style="display:none;">
+                            <i class="bi bi-search-x"></i>
+                            <div>لا توجد أصناف تطابق البحث</div>
                         </div>
                     </div>
-                    
-                    <!-- الأزرار -->
-                    <div class="order-actions order-field-wide">
-                        <button type="submit" class="btn btn-add btn-lg d-block mx-auto">
-                            <i class="bi bi-check-circle"></i> حفظ الطلب
-                        </button>
-                        <a href="{% url 'dashboard' %}" class="btn btn-secondary d-block mx-auto mt-3">
-                            إلغاء
+                </div><!-- /.panel-scroll -->
+            </div><!-- /left -->
+
+            <!-- ===== RIGHT: FIXED CART ===== -->
+            <div class="cashier-panel cart-panel">
+
+                <div class="cart-header">
+                    <div class="ch-title">
+                        <i class="bi bi-cart4"></i>
+                        سلة الطلب
+                    </div>
+                    <div class="ch-count" id="cartHeaderCount">٠ صنف</div>
+                </div>
+
+                <!-- Dynamic items list (invoice style) -->
+                <div class="cart-body">
+                    <div id="selectedItems"></div>
+                </div>
+
+                <!-- Fixed summary + notes + actions at bottom -->
+                <div class="cart-footer">
+                    <div class="summary-row subtotal">
+                        <span class="label">المجموع الفرعي</span>
+                        <span class="value" id="subtotalAmount">0 ج.م</span>
+                    </div>
+                    <div class="summary-row delivery">
+                        <label class="label mb-0" for="deliveryFee">رسوم التوصيل</label>
+                        <div>
+                            <input type="number" id="deliveryFee" name="delivery_fee"
+                                   placeholder="0" min="0" step="1"
+                                   value="">
+                        </div>
+                    </div>
+                    <div class="summary-grand">
+                        <span class="label"><i class="bi bi-wallet2"></i> الإجمالي</span>
+                        <span class="value" id="totalAmount">0 ج.م</span>
+                    </div>
+
+                    <div class="notes-wrap">
+                        <label for="notes"><i class="bi bi-chat-left-text"></i> ملاحظات الطلب</label>
+                        <textarea id="notes" name="notes" rows="3" placeholder="أي تعليمات خاصة للتحضير أو التوصيل..."></textarea>
+                    </div>
+
+                    <div class="cart-actions">
+                        <a href="{% url 'dashboard' %}" class="btn-cancel">
+                            <i class="bi bi-x-lg"></i> إلغاء
                         </a>
+                        <button type="submit" class="btn-save">
+                            <i class="bi bi-check-circle-fill"></i> حفظ الطلب
+                        </button>
                     </div>
-                    
-                    <!-- حقل مخفي لتخزين بيانات الأصناف -->
-                    <input type="hidden" id="itemsData" name="items_data">
-                </form>
-            </div>
-</div>
+                </div><!-- /.cart-footer -->
+            </div><!-- /right -->
+        </div><!-- /.cashier-grid -->
+
+        <!-- Hidden bridges -->
+        <input type="hidden" id="itemsData" name="items_data">
+        {{ menu_items_payload|json_script:"menu-items-json" }}
+        {{ menu_top_ids_payload|json_script:"menu-top-ids-json" }}
+
+        <!-- Hidden original select kept for debugging / fallback data attributes. -->
+        <select style="display:none;" id="menuSelect" multiple aria-hidden="true">
+            {% for item in menu_items %}
+            <option value="{{ item.id }}"
+                    data-price="{{ item.price|unlocalize }}"
+                    data-category="{{ item.category.name }}">
+                {{ item.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
 </div>
 
 <script>
-    let selectedItems = [];
-    
-    // إظهار/إخفاء حقول العميل الجديد
-    document.getElementById('customerSelect').addEventListener('change', function() {
-        if (this.value === 'new') {
-            document.getElementById('newCustomerFields').classList.remove('d-none');
-        } else {
-            document.getElementById('newCustomerFields').classList.add('d-none');
+    /* ============================================================
+       DEFENSIVE JSON PARSERS + GLOBAL ERROR BANNER
+       ============================================================ */
+    (function installGlobalErrorBanner() {
+        window.__showMenuError = function showMenuError(title, detail) {
+            const picker = document.querySelector('.menu-panel .panel-scroll');
+            const target = picker || document.getElementById('menuGrid');
+            if (!target) return;
+            const box = document.createElement('div');
+            box.style.cssText =
+                'padding:1rem;margin:0;background:#fff5f5;border-top:3px solid #dc3545;'
+                + 'border-bottom:3px solid #dc3545;color:#842029;font-size:0.9rem;';
+            box.innerHTML =
+                '<div style="font-weight:700;margin-bottom:0.35rem;">' + title + '</div>'
+                + '<div style="opacity:0.9;white-space:pre-wrap;word-break:break-word;">'
+                + detail
+                + '</div>';
+            target.parentElement.insertBefore(box, target);
+        };
+    })();
+
+    function _safeParseJson(id) {
+        const el = document.getElementById(id);
+        if (!el) {
+            window.__showMenuError(
+                'عنصر بيانات المنيو مفقود',
+                'لم يتم العثور على <script id="' + id + '"> — تحقق من السياق في الـ View.'
+            );
+            return null;
         }
+        try { return JSON.parse(el.textContent || ''); }
+        catch (err) {
+            window.__showMenuError(
+                'فشل تحميل بيانات المنيو — JSON غير صالح',
+                'الخطأ: ' + (err && err.message ? err.message : String(err))
+            );
+            return null;
+        }
+    }
+
+    let selectedItems = [];
+    const _MENU_RAW = _safeParseJson('menu-items-json');
+    const _TOP_RAW  = _safeParseJson('menu-top-ids-json');
+    const MENU_DATA = Array.isArray(_MENU_RAW) ? _MENU_RAW : [];
+    const TOP_IDS  = Array.isArray(_TOP_RAW)  ? _TOP_RAW  : [];
+    const BY_ID = new Map();
+    (function buildById() {
+        for (let i = 0; i < MENU_DATA.length; i++) {
+            const it = MENU_DATA[i];
+            if (it && typeof it === 'object' && typeof it.id === 'number') BY_ID.set(it.id, it);
+        }
+    })();
+    if (MENU_DATA.length === 0 && (_MENU_RAW !== null || _TOP_RAW !== null)) {
+        window.__showMenuError(
+            'لا توجد أصناف نشطة',
+            'قائمة المنيو فارغة. شغّل: venv\\Scripts\\python.exe -m seed_menu ثم أعد التحميل.'
+        );
+    }
+
+    let activeCategoryId = '__ALL__';
+    let searchQuery = '';
+
+    /* ============================================================
+       CUSTOMER TOGGLE (unchanged behaviour)
+       ============================================================ */
+    document.getElementById('customerSelect').addEventListener('change', function() {
+        document.getElementById('newCustomerFields').classList.toggle('d-none', this.value !== 'new');
     });
-    
-    // معالجة اختيار الأصناف
-    document.getElementById('menuSelect').addEventListener('change', function() {
-        const selectedOptions = Array.from(this.selectedOptions);
-        
-        selectedOptions.forEach(option => {
-            const itemId = option.value;
-            const itemName = option.text.split(' - ')[0];
-            const itemPrice = parseFloat(option.dataset.price);
-            
-            if (!selectedItems.find(item => String(item.id) === itemId)) {
-                selectedItems.push({
-                    id: parseInt(itemId),
-                    name: itemName,
-                    price: itemPrice,
-                    regularPrice: itemPrice,
-                    discount: 0,
-                    discountOpen: false,
-                    quantity: 1
-                });
-            }
+
+    /* ============================================================
+       MENU PICKER: RENDER HELPERS
+       ============================================================ */
+    function uniqueCategories() {
+        const seen = new Map();
+        MENU_DATA.forEach(it => { if (!seen.has(it.c)) seen.set(it.c, { id: it.c, name: it.cn }); });
+        return Array.from(seen.values());
+    }
+
+    function renderQuickStrip() {
+        const list = document.getElementById('quickList');
+        list.innerHTML = '';
+        TOP_IDS.forEach(id => {
+            const it = BY_ID.get(id);
+            if (!it) return;
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'quick-chip';
+            chip.onclick = () => addItemById(id, 1);
+            chip.innerHTML = `
+                <span class="chip-icon"><i class="bi bi-star-fill"></i></span>
+                <span class="chip-text">
+                    <span class="chip-name"></span>
+                    <span class="chip-price"></span>
+                </span>`;
+            chip.querySelector('.chip-name').textContent = it.n;
+            chip.querySelector('.chip-price').textContent = it.p > 0 ? it.p + ' ج.م' : 'حسب الوزن';
+            list.appendChild(chip);
         });
-        
+    }
+
+    function renderTabs() {
+        const cats = uniqueCategories();
+        const tabs = document.getElementById('categoryTabs');
+        tabs.innerHTML = '';
+        tabs.appendChild(makeTabBtn('__ALL__', 'الكل (' + MENU_DATA.length + ')', activeCategoryId === '__ALL__'));
+        cats.forEach(c => {
+            const count = MENU_DATA.filter(it => it.c === c.id).length;
+            tabs.appendChild(makeTabBtn(c.id, c.name + ' (' + count + ')', activeCategoryId === c.id));
+        });
+    }
+
+    function makeTabBtn(catId, label, isActive) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tab-btn' + (isActive ? ' active' : '');
+        const parts = label.split(' (');
+        const cnt = (label.match(/\((\d+)\)/) || [])[1] || '';
+        b.innerHTML = `<span>${parts[0]}</span><span class="tab-count">${cnt}</span>`;
+        b.onclick = () => { activeCategoryId = catId; renderTabs(); renderGrid(); };
+        return b;
+    }
+
+    function getFilteredItems() {
+        const q = searchQuery.trim().toLowerCase();
+        return MENU_DATA.filter(it => {
+            if (activeCategoryId !== '__ALL__' && it.c !== activeCategoryId) return false;
+            if (q) {
+                const hay = (it.n + ' ' + it.cn).toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('menuGrid');
+        const empty = document.getElementById('gridEmpty');
+        const info = document.getElementById('gridInfo');
+        const visibleCount = document.getElementById('visibleCount');
+        grid.innerHTML = '';
+        const items = getFilteredItems();
+        visibleCount.textContent = items.length;
+        info.textContent = activeCategoryId === '__ALL__'
+            ? 'جميع الأقسام'
+            : (uniqueCategories().find(c => c.id === activeCategoryId) || {}).name || '';
+        if (items.length === 0) { empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+
+        items.forEach(it => {
+            const inSel = selectedItems.find(s => s.id === it.id);
+            const qty = inSel ? inSel.quantity : 0;
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'item-card' + (qty > 0 ? ' selected' : '') + (it.w ? ' weight-hint' : '');
+            card.dataset.id = String(it.id);
+            card.onclick = () => addItemById(it.id, 1);
+            card.innerHTML = `
+                <span class="qty-badge">${qty}</span>
+                <div class="card-top"><span class="cat-tag"></span></div>
+                <div class="card-name"></div>
+                <div class="card-bottom">
+                    <span class="card-price ${it.w ? 'price-zero' : ''}"></span>
+                    <span class="add-btn" title="إضافة">+</span>
+                </div>
+            `;
+            card.querySelector('.cat-tag').textContent = it.cn;
+            card.querySelector('.card-name').textContent = it.n;
+            card.querySelector('.card-price').textContent = it.w ? 'حسب الوزن' : (it.p + ' ج.م');
+            grid.appendChild(card);
+        });
+    }
+
+    function refreshCardBadges() {
+        const grid = document.getElementById('menuGrid');
+        if (!grid) return;
+        grid.querySelectorAll('.item-card').forEach(card => {
+            const id = Number(card.dataset.id);
+            const inSel = selectedItems.find(s => s.id === id);
+            const qty = inSel ? inSel.quantity : 0;
+            card.classList.toggle('selected', qty > 0);
+            const badge = card.querySelector('.qty-badge');
+            if (badge) badge.textContent = qty;
+        });
+        updateSelectedBadgeCount();
+    }
+
+    function updateSelectedBadgeCount() {
+        const el = document.getElementById('selectedBadgeCount');
+        const hc = document.getElementById('cartHeaderCount');
+        const totalQty = selectedItems.reduce((s, i) => s + i.quantity, 0);
+        const itemsN = selectedItems.length;
+        let text;
+        if (itemsN === 0) text = '0 صنف';
+        else if (itemsN === 1) text = (totalQty === 1 ? '1 صنف' : totalQty + ' وحدة · 1 صنف');
+        else text = (totalQty + ' وحدة · ' + itemsN + ' أصناف');
+        if (el) el.textContent = text;
+        if (hc) hc.textContent = text;
+    }
+
+    /* ============================================================
+       ADD / REMOVE BRIDGE
+       ============================================================ */
+    function addItemById(id, qtyDelta) {
+        const it = BY_ID.get(Number(id));
+        if (!it) return;
+        const existing = selectedItems.find(s => s.id === it.id);
+        if (existing) {
+            existing.quantity += qtyDelta;
+            if (existing.quantity < 1) existing.quantity = 1;
+        } else {
+            selectedItems.push({
+                id: it.id, name: it.n, price: it.p, regularPrice: it.p,
+                discount: 0, discountOpen: false,
+                quantity: qtyDelta < 1 ? 1 : qtyDelta,
+            });
+        }
         renderSelectedItems();
         updateTotal();
+        refreshCardBadges();
+    }
+
+    document.getElementById('clearAllBtn').addEventListener('click', function() {
+        if (selectedItems.length === 0) return;
+        if (!confirm('هل تريد إفراغ جميع الأصناف المختارة؟')) return;
+        selectedItems = [];
+        renderSelectedItems();
+        updateTotal();
+        renderGrid();
+        updateSelectedBadgeCount();
     });
-    
-    // عرض الأصناف المختارة
+
+    /* ============================================================
+       SEARCH (debounced)
+       ============================================================ */
+    (function wireSearch() {
+        const input = document.getElementById('menuSearchInput');
+        let t = null;
+        input.addEventListener('input', function() {
+            clearTimeout(t);
+            t = setTimeout(() => { searchQuery = input.value; renderGrid(); }, 90);
+        });
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault(); input.focus(); input.select();
+            }
+            if (e.key === 'Escape' && document.activeElement === input && input.value) {
+                input.value = ''; searchQuery = ''; renderGrid();
+            }
+        });
+    })();
+
+    /* ============================================================
+       INVOICE-STYLE CART RENDER
+       ============================================================ */
     function renderSelectedItems() {
         const container = document.getElementById('selectedItems');
         container.innerHTML = '';
-        
-        selectedItems.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'order-item';
-            div.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div>
-                        <strong>${item.name}</strong>
-                        <span class="text-muted ms-2">${item.regularPrice} ج.م</span>
-                        ${item.discount > 0 ? `<small class="d-block text-success">بعد الخصم: ${item.price} ج.م</small>` : ''}
-                    </div>
-                    <div class="d-flex align-items-center flex-wrap gap-2">
-                        ${item.discountOpen ? `
-                            <label class="small mb-0" for="itemDiscount${index}">الخصم</label>
-                            <input id="itemDiscount${index}" class="form-control form-control-sm item-sale-price" type="number" min="0" max="${item.regularPrice}" step="1" value="${item.discount || ''}" oninput="updateItemDiscount(${index}, this.value)">
-                            <small class="text-muted">ج.م</small>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearItemDiscount(${index})">إلغاء الخصم</button>
-                        ` : `
-                            <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleItemDiscount(${index})">إضافة خصم</button>
-                        `}
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeQuantity(${index}, -1)">-</button>
-                        <span class="mx-2">${item.quantity}</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeQuantity(${index}, 1)">+</button>
-                        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeItem(${index})">
-                            <i class="bi bi-trash"></i>
-                        </button>
+        if (selectedItems.length === 0) {
+            container.innerHTML = `
+                <div class="cart-empty">
+                    <i class="bi bi-basket"></i>
+                    <strong>سلة الطلب فارغة</strong>
+                    <small>اختر الأصناف من البطاقات أو شريط الأكثر طلباً</small>
+                </div>`;
+            updateSelectedBadgeCount();
+            return;
+        }
+
+        selectedItems.forEach((item, idx) => {
+            const row = document.createElement('div');
+            row.className = 'inv-row';
+
+            const hasDisc = Number.isInteger(item.discount) && item.discount > 0;
+            const lineTotal = (Number(item.price) || 0) * item.quantity;
+
+            row.innerHTML = `
+                <div class="inv-idx">${idx + 1}</div>
+                <div class="inv-info">
+                    <div class="inv-name"></div>
+                    <div class="inv-meta">
+                        ${item.regularPrice > 0 ? `<span>الوحدة: ${item.regularPrice} ج.م</span>` : `<span class="inv-weight">⭐ حسب الوزن</span>`}
+                        ${hasDisc ? `<span class="inv-disc">خصم ${item.discount} ج.م</span>` : ''}
                     </div>
                 </div>
+                <div class="inv-qty">
+                    <button type="button" title="نقصان" onclick="changeQuantity(${idx}, -1)">−</button>
+                    <span>${item.quantity}</span>
+                    <button type="button" title="زيادة" onclick="changeQuantity(${idx}, 1)">+</button>
+                </div>
+                <div class="inv-actions">
+                    <button type="button" class="inv-act-btn act-disc"
+                            title="${hasDisc ? 'تعديل الخصم' : 'إضافة خصم'}"
+                            onclick="toggleItemDiscount(${idx})">
+                        <i class="bi ${hasDisc ? 'bi-percent' : 'bi-tag'}"></i>
+                    </button>
+                    <button type="button" class="inv-act-btn act-del"
+                            title="حذف الصنف"
+                            onclick="removeItem(${idx})">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                </div>
+                <div class="inv-price-col">
+                    ${hasDisc ? `<div class="inv-unit-price">${(item.regularPrice - item.discount)} × ${item.quantity}</div>` : `<div class="inv-unit-price">${item.regularPrice} × ${item.quantity}</div>`}
+                    <div class="inv-line-total">${lineTotal.toFixed(0)} ج.م</div>
+                </div>
+                ${item.discountOpen ? `
+                <div class="inv-disc-row">
+                    <label for="itemDiscount${idx}"><i class="bi bi-tag-fill"></i> خصم بالجنيه</label>
+                    <input id="itemDiscount${idx}" type="number" min="0" max="${item.regularPrice}" step="1"
+                           value="${hasDisc ? item.discount : ''}"
+                           placeholder="0"
+                           oninput="updateItemDiscount(${idx}, this.value)">
+                    <small>ج.م</small>
+                    <button type="button" class="btn-clear-disc" onclick="clearItemDiscount(${idx})">إلغاء</button>
+                </div>` : ''}
             `;
-            container.appendChild(div);
+            row.querySelector('.inv-name').textContent = item.name;
+            container.appendChild(row);
+            if (item.discountOpen) {
+                const inp = document.getElementById(`itemDiscount${idx}`);
+                if (inp) inp.focus();
+            }
         });
+        updateSelectedBadgeCount();
     }
 
+    /* Discount / qty / remove API (unchanged semantics, new UI callers) */
     function toggleItemDiscount(index) {
-        selectedItems[index].discountOpen = true;
+        selectedItems[index].discountOpen = !selectedItems[index].discountOpen;
         renderSelectedItems();
-        document.getElementById(`itemDiscount${index}`).focus();
+        refreshCardBadges();
     }
-
     function clearItemDiscount(index) {
-        selectedItems[index].discount = 0;
-        selectedItems[index].price = selectedItems[index].regularPrice;
-        selectedItems[index].discountOpen = false;
-        renderSelectedItems();
-        updateTotal();
+        const it = selectedItems[index];
+        it.discount = 0; it.price = it.regularPrice; it.discountOpen = false;
+        renderSelectedItems(); updateTotal();
     }
-
     function updateItemDiscount(index, value) {
         const item = selectedItems[index];
         item.discount = value === '' ? null : Number(value);
@@ -282,104 +1189,110 @@
             ? item.regularPrice - item.discount
             : null;
         const input = document.getElementById(`itemDiscount${index}`);
-        input.setCustomValidity(item.price !== null ? '' : 'أدخل خصمًا صحيحًا لا يتجاوز السعر');
+        if (input) input.setCustomValidity(item.price !== null ? '' : 'أدخل خصمًا صحيحًا لا يتجاوز السعر');
         updateTotal();
+        // Re-render cart to update the line-total (price change propagates)
+        if (item.price !== null) renderSelectedItems();
     }
-    
-    // تغيير الكمية
     function changeQuantity(index, delta) {
         selectedItems[index].quantity += delta;
-        if (selectedItems[index].quantity < 1) {
-            selectedItems[index].quantity = 1;
-        }
-        renderSelectedItems();
-        updateTotal();
+        if (selectedItems[index].quantity < 1) selectedItems[index].quantity = 1;
+        renderSelectedItems(); updateTotal(); refreshCardBadges();
     }
-    
-    // حذف صنف
     function removeItem(index) {
         selectedItems.splice(index, 1);
-        renderSelectedItems();
-        updateTotal();
+        renderSelectedItems(); updateTotal(); renderGrid();
     }
-    
-    // تحديث الإجمالي
+
+    /* ============================================================
+       TOTALS + SUBMIT
+       ============================================================ */
     function updateTotal() {
         const deliveryFeeInput = document.getElementById('deliveryFee').value;
         const deliveryFee = deliveryFeeInput === '' ? 0 : parseFloat(deliveryFeeInput) || 0;
         const subtotal = selectedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * item.quantity), 0);
         const total = subtotal + deliveryFee;
-
-        document.getElementById('totalAmount').textContent = total.toFixed(0) + ' ج.م';
+        const s = document.getElementById('subtotalAmount');
+        const t = document.getElementById('totalAmount');
+        if (s) s.textContent = subtotal.toFixed(0) + ' ج.م';
+        if (t) t.textContent = total.toFixed(0) + ' ج.م';
         return total.toFixed(0);
     }
-    
-    // تحديث الإجمالي عند تغيير رسوم التوصيل
     document.getElementById('deliveryFee').addEventListener('input', updateTotal);
-    
-    // إرسال النموذج
+
     document.getElementById('orderForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        if (selectedItems.length === 0) {
-            alert('يرجى اختيار صنف واحد على الأقل');
+
+        // ---- 1) Customer validation (Frontend guard — server re-validates too)
+        const sel = document.getElementById('customerSelect');
+        const cid = (sel.value || '').trim();
+        if (!cid) {
+            alert('يرجى اختيار عميل من القائمة أو اختيار "+ عميل جديد" وإدخال الاسم والهاتف');
+            sel.focus();
             return;
+        }
+        if (cid === 'new') {
+            const name  = (document.getElementById('customerName').value  || '').trim();
+            const phone = (document.getElementById('customerPhone').value || '').trim();
+            if (!name) {
+                alert('يرجى إدخال اسم العميل الجديد');
+                document.getElementById('customerName').focus();
+                return;
+            }
+            if (!phone) {
+                alert('يرجى إدخال رقم هاتف العميل الجديد');
+                document.getElementById('customerPhone').focus();
+                return;
+            }
         }
 
+        // ---- 2) Items / discounts
+        if (selectedItems.length === 0) { alert('يرجى اختيار صنف واحد على الأقل'); return; }
         if (selectedItems.some(item => !Number.isInteger(item.discount) || item.discount < 0 || item.discount > item.regularPrice)) {
-            alert('يجب أن يكون الخصم عددًا صحيحًا لا يتجاوز السعر');
-            return;
+            alert('يجب أن يكون الخصم عددًا صحيحًا لا يتجاوز سعر الوحدة'); return;
         }
-        
         document.getElementById('itemsData').value = JSON.stringify(selectedItems);
         this.submit();
     });
 
+    /* ============================================================
+       COORDINATE EXTRACTOR (unchanged)
+       ============================================================ */
     function extractCoordinatesFromOrder() {
         const linkInput = document.getElementById('customerGoogleMapsLink');
         const latInput = document.getElementById('customerLatitude');
         const lngInput = document.getElementById('customerLongitude');
         const link = linkInput.value.trim();
-
-        if (!link) {
-            alert('يرجى إدخال رابط خرائط جوجل أولاً');
-            return;
-        }
-
-        // محاولة استخراج الإحداثيات من روابط مختلفة
+        if (!link) { alert('يرجى إدخال رابط خرائط جوجل أولاً'); return; }
         let coordinates = null;
-
-        // رابط مشفر (مثل maps.app.goo.gl)
         if (link.includes('maps.app.goo.gl') || link.includes('goo.gl')) {
-            alert('لا يمكن استخراج الإحداثيات تلقائياً من الروابط المختصرة. يرجى استخدام الرابط الكامل أو إدخال الإحداثيات يدوياً.');
+            alert('لا يمكن استخراج الإحداثيات تلقائياً من الروابط المختصرة — استخدم الرابط الكامل.');
             return;
         }
-
-        // رابط عادي يحتوي على @lat,lng
         const atMatch = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (atMatch) {
-            coordinates = { lat: atMatch[1], lng: atMatch[2] };
-        }
-
-        // رابط يحتوي على q=lat,lng
-        const qMatch = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (qMatch) {
-            coordinates = { lat: qMatch[1], lng: qMatch[2] };
-        }
-
-        // رابط يحتوي على ll=lat,lng
+        if (atMatch) coordinates = { lat: atMatch[1], lng: atMatch[2] };
+        const qMatch  = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (qMatch)  coordinates = { lat: qMatch[1],  lng: qMatch[2] };
         const llMatch = link.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (llMatch) {
-            coordinates = { lat: llMatch[1], lng: llMatch[2] };
-        }
-
+        if (llMatch) coordinates = { lat: llMatch[1], lng: llMatch[2] };
         if (coordinates) {
             latInput.value = coordinates.lat;
             lngInput.value = coordinates.lng;
             alert('تم استخراج الإحداثيات بنجاح!\nخط العرض: ' + coordinates.lat + '\nخط الطول: ' + coordinates.lng);
         } else {
-            alert('لم يتم العثور على إحداثيات في الرابط. يرجى إدخال الإحداثيات يدوياً أو استخدام رابط يحتوي على الإحداثيات.');
+            alert('لم يتم العثور على إحداثيات في الرابط — أدخلها يدوياً أو استخدم رابطاً يحتوي على الإحداثيات.');
         }
     }
+
+    /* ============================================================
+       INITIAL RENDER
+       ============================================================ */
+    document.addEventListener('DOMContentLoaded', function() {
+        renderQuickStrip();
+        renderTabs();
+        renderGrid();
+        renderSelectedItems();
+        updateTotal();
+    });
 </script>
 {% endblock %}

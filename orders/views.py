@@ -70,6 +70,139 @@ def order_list(request):
     return render(request, 'orders/order_list.html', context)
 
 
+def _build_menu_context():
+    """Build menu picker context: categories, grouped items, top-sellers.
+
+    NOTE: Returns raw Python objects (dicts/lists) for Django's |json_script
+    filter to serialize SAFELY. Do NOT pre-json.dumps() them, because the
+    |json_script template filter serializes Python objects itself — doing
+    both produces double-escaped strings that JSON.parse() can't turn into
+    arrays (the root cause of the "0 items visible" blank grid bug).
+    """
+    from django.db import models
+    from django.db.models import Count, Sum
+    from core.models import Category
+
+    active_items_qs = (
+        MenuItem.objects
+        .filter(is_active=True)
+        .select_related('category')
+        .order_by('category__order', 'order', 'name')
+    )
+    active_items = list(active_items_qs)
+
+    # ---- 1) Categories with active-item counts ----
+    categories = list(
+        Category.objects
+        .filter(items__is_active=True)
+        .annotate(item_count=Count('items', filter=models.Q(items__is_active=True)))
+        .order_by('order')
+        .distinct()
+    )
+
+    # ---- 2) Top 8 sellers: by aggregate OrderItem quantity (fallback: first 8) ----
+    top_sellers = list(
+        MenuItem.objects
+        .filter(is_active=True)
+        .annotate(_sold=Sum('orderitem__quantity'))
+        .order_by('-_sold', 'order', 'name')[:8]
+    )
+    if len(top_sellers) < 8:
+        seen_ids = {t.id for t in top_sellers}
+        fallback = [it for it in active_items if it.id not in seen_ids]
+        top_sellers.extend(fallback[: 8 - len(top_sellers)])
+
+    # ---- 3) Group items by category (stable order) ----
+    grouped = {cat.id: [] for cat in categories}
+    for item in active_items:
+        grouped.setdefault(item.category_id, []).append(item)
+
+    # ---- 4) Raw Python objects for |json_script (will be serialized by Django) ----
+    def _serialize(it):
+        return {
+            "id": it.id,
+            "n": it.name,
+            "p": int(it.price),
+            "c": it.category_id,
+            "cn": it.category.name,
+            "w": int(it.price) == 0,
+        }
+
+    items_payload = [_serialize(it) for it in active_items]
+    top_ids_payload = [int(t.id) for t in top_sellers]
+
+    return {
+        "menu_items": active_items,           # backwards-compat
+        "menu_items_payload": items_payload,   # to be piped through |json_script
+        "menu_categories": categories,
+        "menu_grouped": grouped,
+        "menu_top_sellers": top_sellers,
+        "menu_top_ids_payload": top_ids_payload,  # to be piped through |json_script
+    }
+
+
+def _resolve_customer_from_post(request):
+    """Resolve a customer safely from POST payload with strict server-side validation.
+
+    Returns a 4-tuple:
+        (customer_obj, error_message, was_created, anon_fields_dict)
+
+    On success:
+        customer_obj       -> a Customer instance (either existing or just created)
+        error_message      -> None
+        was_created        -> bool (True if newly inserted, False if existing)
+        anon_fields_dict   -> {} (anonymous data left blank on anon mode unused)
+
+    On failure:
+        customer_obj       -> None
+        error_message      -> Arabic user-facing error string
+        was_created        -> False
+        anon_fields_dict   -> {}
+
+    Never raises DB exceptions (IntegrityError / DoesNotExist).
+    """
+    from core.models import Customer
+
+    cid = (request.POST.get('customer_id') or '').strip()
+    name = (request.POST.get('customer_name') or '').strip()
+    phone = (request.POST.get('customer_phone') or '').strip()
+    address = (request.POST.get('customer_address') or '').strip()
+    gmaps = (request.POST.get('customer_google_maps_link') or '').strip()
+    lat_raw = (request.POST.get('customer_latitude') or '').strip()
+    lng_raw = (request.POST.get('customer_longitude') or '').strip()
+
+    # --- Case A: Existing customer chosen from dropdown
+    if cid and cid != 'new':
+        if not cid.isdigit():
+            return None, 'معرف العميل غير صالح (يجب أن يكون رقمًا)', False, {}
+        existing = Customer.objects.filter(pk=int(cid)).first()
+        if not existing:
+            return None, 'العميل المحدد غير موجود في قاعدة البيانات', False, {}
+        return existing, None, False, {}
+
+    # --- Case B: New customer (or no choice)
+    if not name:
+        return None, 'اسم العميل مطلوب — يرجى إدخال اسم العميل لإنشاء عميل جديد', False, {}
+    if not phone:
+        return None, 'رقم الهاتف مطلوب — يرجى إدخال رقم هاتف العميل', False, {}
+
+    lat = _safe_parse_float(lat_raw)
+    lng = _safe_parse_float(lng_raw)
+
+    try:
+        created = Customer.objects.create(
+            name=name,
+            phone=phone,
+            address=address or '',
+            google_maps_link=gmaps or None,
+            latitude=lat,
+            longitude=lng,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return None, f'فشل إنشاء العميل: {str(exc)}', False, {}
+    return created, None, True, {}
+
+
 @login_required
 def order_create(request):
     """إنشاء طلب جديد"""
@@ -87,35 +220,20 @@ def order_create(request):
         except (InvalidOperation, TypeError, ValueError, json.JSONDecodeError):
             return HttpResponseBadRequest('تحقق من أسعار الأصناف والكميات ورسوم التوصيل')
 
-        # بيانات العميل
-        customer_id = request.POST.get('customer_id')
-        customer_name = request.POST.get('customer_name')
-        customer_phone = request.POST.get('customer_phone')
-        customer_address = request.POST.get('customer_address')
-        customer_google_maps_link = request.POST.get('customer_google_maps_link', '')
-        customer_latitude = request.POST.get('customer_latitude', '')
-        customer_longitude = request.POST.get('customer_longitude', '')
+        # ---- Resolve customer (safe: never raises DB errors) ----
+        customer, cust_error, _was_new, _anon = _resolve_customer_from_post(request)
+        if customer is None:
+            ctx = _build_menu_context()
+            ctx['customers'] = Customer.objects.all()
+            ctx['validation_error'] = cust_error or 'تعذر التعرف على بيانات العميل'
+            return render(request, 'orders/order_form.html', ctx, status=400)
 
         # بيانات الطلب
         notes = request.POST.get('notes', '')
 
         # إنشاء الطلب
         order = Order()
-
-        if customer_id and customer_id != 'new':
-            order.customer = Customer.objects.get(id=customer_id)
-        else:
-            # إنشاء عميل جديد
-            customer = Customer.objects.create(
-                name=customer_name,
-                phone=customer_phone,
-                address=customer_address,
-                google_maps_link=customer_google_maps_link if customer_google_maps_link else None,
-                latitude=Decimal(customer_latitude) if customer_latitude else None,
-                longitude=Decimal(customer_longitude) if customer_longitude else None
-            )
-            order.customer = customer
-        
+        order.customer = customer
         order.delivery_fee = delivery_fee
         order.notes = notes
         order.save()
@@ -136,11 +254,9 @@ def order_create(request):
         
         return redirect('order_detail', pk=order.pk)
     
-    context = {
-        'menu_items': MenuItem.objects.filter(is_active=True).select_related('category'),
-        'customers': Customer.objects.all(),
-    }
-    return render(request, 'orders/order_form.html', context)
+    ctx = _build_menu_context()
+    ctx['customers'] = Customer.objects.all()
+    return render(request, 'orders/order_form.html', ctx)
 
 
 @login_required
@@ -220,19 +336,23 @@ def order_edit(request, pk):
         except (InvalidOperation, TypeError, ValueError, json.JSONDecodeError):
             return HttpResponseBadRequest('تحقق من أسعار الأصناف والكميات ورسوم التوصيل')
 
-        # تعديل بيانات العميل
-        customer_id = request.POST.get('customer_id')
-        if customer_id and customer_id != 'new':
-            order.customer = Customer.objects.get(id=customer_id)
-            order.customer_name = ''
-            order.customer_phone = ''
-            order.customer_address = ''
-        else:
-            order.customer = None
-            order.customer_name = request.POST.get('customer_name')
-            order.customer_phone = request.POST.get('customer_phone')
-            order.customer_address = request.POST.get('customer_address')
-        
+        # ---- تعديل بيانات العميل (صارم — لا أخطاء قاعدة بيانات) ----
+        customer, cust_error, _was_new, _anon = _resolve_customer_from_post(request)
+        if customer is None:
+            ctx = _build_menu_context()
+            ctx['order'] = order
+            ctx['customers'] = Customer.objects.all()
+            ctx['validation_error'] = cust_error or 'تعذر التعرف على بيانات العميل'
+            return render(request, 'orders/order_edit.html', ctx, status=400)
+
+        order.customer = customer
+        # In this project the Order model stores BOTH an FK customer AND
+        # denormalized name/phone/address fields. When we have an FK, clear
+        # the denormalized copies so they never disagree with the FK.
+        order.customer_name = ''
+        order.customer_phone = ''
+        order.customer_address = ''
+
         # تعديل رسوم التوصيل والملاحظات
         order.delivery_fee = delivery_fee
         order.notes = request.POST.get('notes', '')
@@ -256,12 +376,10 @@ def order_edit(request, pk):
         
         return redirect('order_detail', pk=order.pk)
     
-    context = {
-        'order': order,
-        'menu_items': MenuItem.objects.filter(is_active=True).select_related('category'),
-        'customers': Customer.objects.all(),
-    }
-    return render(request, 'orders/order_edit.html', context)
+    ctx = _build_menu_context()
+    ctx['order'] = order
+    ctx['customers'] = Customer.objects.all()
+    return render(request, 'orders/order_edit.html', ctx)
 
 
 @require_POST

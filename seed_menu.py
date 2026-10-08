@@ -121,8 +121,71 @@ CATEGORY_DESCRIPTION = (
     "طاجنات، مستعات، بشاميل، لازانيا، مضرونات ومستوعات "
     "الطبخ الكبيرة للعائلات"
 )
-# صواني وطواجن is the FIRST category that should appear on the menu
 CATEGORY_ORDER = 1
+
+
+# =====================================================================
+# OFFICIAL PRINTED MENU - اللحوم
+# =====================================================================
+LAHAM_CATEGORY_NAME = "اللحوم"
+LAHAM_CATEGORY_DESCRIPTION = "أصناف اللحوم المشوية، المسلوقة، والمشكلات - الأسعار بالكيلو جرام"
+LAHAM_CATEGORY_ORDER = 2
+
+LAHAM_ORDERED = [
+    (1,  "لحمة فتة",                      850),
+    (2,  "لحمة روستو",                    750),
+    (3,  "لحمة رولات",                    900),
+    (4,  "لحمة مشوية",                    700),
+    (5,  "شاورما لحمة",                   750),
+    (6,  "كباب حلة",                      800),
+    (7,  "بيكاتا لحم بالمشروم",           850),
+    (8,  "لحمة مسلوقة ومحمرة",            650),
+    (9,  "لحمة بالصوص البني",             850),
+    (10, "ورقة لحمة نص ك",                475),
+    (11, "ريش ضاني (شوي فرن)",            850),
+    (12, "كفتة فرن",                      550),
+    (13, "كفتة فحم",                      550),
+    (14, "كفتة أرز",                      650),
+    (15, "طرب",                           900),
+    (16, "كباب",                          850),
+    (17, "مشاوي مشكل",                    825),
+]
+
+
+# =====================================================================
+# OFFICIAL PRINTED MENU - حسب الوزن
+# =====================================================================
+WEIGHT_CATEGORY_NAME = "حسب الوزن"
+WEIGHT_CATEGORY_DESCRIPTION = "قطع اللحم الكاملة التي يتم بيعها حسب الوزن الفعلي عند الطلب"
+WEIGHT_CATEGORY_ORDER = 3
+
+WEIGHT_ORDERED = [
+    (1, "فخدة ضاني"),
+    (2, "كتف ضاني"),
+    (3, "نصف خروف"),
+    (4, "كتف عجل"),
+    (5, "فخدة عجل"),
+    (6, "لحم ضاني بالعظم"),
+    (7, "عرق فلتو"),
+    (8, "عرق تربيانكو"),
+]
+
+
+# =====================================================================
+# OFFICIAL PRINTED MENU - إضافات
+# =====================================================================
+EXTRAS_CATEGORY_NAME = "إضافات"
+EXTRAS_CATEGORY_DESCRIPTION = "إضافات جانبية وأرز وصوصات وسلطات ومخللات"
+EXTRAS_CATEGORY_ORDER = 4
+
+EXTRAS_ORDERED = [
+    (1, "أرز بسمتي"),
+    (2, "أرز بالخلطة"),
+    (3, "أرز بالشعرية"),
+    (4, "صوصات"),
+    (5, "مخللات"),
+    (6, "سلطات"),
+]
 
 
 def _upsert(
@@ -255,41 +318,183 @@ def seed_sawanih_tawagen() -> dict:
     return stats
 
 
-def _print_report(stats: dict) -> None:
-    total_items = MenuItem.objects.filter(category__name=CATEGORY_NAME).count()
+def _get_or_create_category(
+    name: str,
+    description: str,
+    order: int,
+    stats: dict,
+) -> Category:
+    """Get or create a Category; update stats dict in-place."""
+    cat, created = Category.objects.get_or_create(
+        name=name,
+        defaults={
+            "description": description,
+            "order": order,
+            "is_active": True,
+        },
+    )
+    if created:
+        stats["categories"]["created"] += 1
+    else:
+        changed_cat = False
+        if not cat.description:
+            cat.description = description
+            changed_cat = True
+        if cat.order != order:
+            cat.order = order
+            changed_cat = True
+        if changed_cat:
+            cat.save(update_fields=["description", "order", "updated_at"])
+            stats["categories"]["updated"] += 1
+    stats["categories"]["total"] += 1
+    return cat
+
+
+def seed_laham() -> dict:
+    """Seed قسم اللحوم - 17 items with price-per-kg in EXACT user order."""
+    stats = {
+        "categories": {"created": 0, "updated": 0, "total": 0},
+        "items":      {"created": 0, "updated": 0, "skipped": 0, "total": 0},
+    }
+
+    cat = _get_or_create_category(
+        LAHAM_CATEGORY_NAME, LAHAM_CATEGORY_DESCRIPTION, LAHAM_CATEGORY_ORDER, stats,
+    )
+
+    display_order = 0
+    for human_idx, name, price in LAHAM_ORDERED:
+        display_order += 1
+        description = (
+            f"#{human_idx:>02} في قائمة اللحوم - السعر بالكيلو جرام"
+        )
+        is_new = _upsert(cat, name, price, display_order, description)
+        stats["items"]["created" if is_new else "skipped"] += 1
+        stats["items"]["total"] += 1
+
+    return stats
+
+
+def seed_weight_based() -> dict:
+    """Seed قسم حسب الوزن - 8 items with price=0 and weight note."""
+    stats = {
+        "categories": {"created": 0, "updated": 0, "total": 0},
+        "items":      {"created": 0, "updated": 0, "skipped": 0, "total": 0},
+    }
+
+    cat = _get_or_create_category(
+        WEIGHT_CATEGORY_NAME, WEIGHT_CATEGORY_DESCRIPTION, WEIGHT_CATEGORY_ORDER, stats,
+    )
+
+    display_order = 0
+    for human_idx, name in WEIGHT_ORDERED:
+        display_order += 1
+        price = 0
+        description = (
+            f"#{human_idx:>02} في قائمة حسب الوزن - السعر يحدد بالوزن الفعلي عند الطلب"
+        )
+        is_new = _upsert(cat, name, price, display_order, description)
+        stats["items"]["created" if is_new else "skipped"] += 1
+        stats["items"]["total"] += 1
+
+    return stats
+
+
+def seed_extras() -> dict:
+    """Seed قسم الإضافات - 6 items (أرز، صوصات، مخللات، سلطات) بالترتيب الصحيح."""
+    stats = {
+        "categories": {"created": 0, "updated": 0, "total": 0},
+        "items":      {"created": 0, "updated": 0, "skipped": 0, "total": 0},
+    }
+
+    cat = _get_or_create_category(
+        EXTRAS_CATEGORY_NAME, EXTRAS_CATEGORY_DESCRIPTION, EXTRAS_CATEGORY_ORDER, stats,
+    )
+
+    display_order = 0
+    for human_idx, name in EXTRAS_ORDERED:
+        display_order += 1
+        price = 0
+        description = (
+            f"#{human_idx:>02} في قائمة الإضافات جانبية مع الأطباق الرئيسية"
+        )
+        is_new = _upsert(cat, name, price, display_order, description)
+        stats["items"]["created" if is_new else "skipped"] += 1
+        stats["items"]["total"] += 1
+
+    return stats
+
+
+def _print_single_report(category_label: str, category_name: str,
+                         base_count: int, base_label: str, stats: dict) -> None:
+    """Print a single-category seed report."""
+    total_items = MenuItem.objects.filter(category__name=category_name).count()
     sep = "=" * 70
     print()
     print(sep)
     print("  ALFHANA KITCHEN - DATA SEED REPORT")
-    print("  Category  : " + CATEGORY_NAME)
+    print("  Category  : " + category_label)
     print(sep)
     print("  Categories:")
-    print(
-        "    - new     : " + str(stats["categories"]["created"]),
-    )
-    print(
-        "    - updated : " + str(stats["categories"]["updated"]),
-    )
+    print("    - new     : " + str(stats["categories"]["created"]))
+    print("    - updated : " + str(stats["categories"]["updated"]))
     print("  Items in this run:")
-    print(
-        "    - new     : " + str(stats["items"]["created"]),
-    )
-    print(
-        "    - skipped : " + str(stats["items"]["skipped"]),
-    )
-    print(
-        "    - processed: " + str(stats["items"]["total"]),
-    )
+    print("    - new     : " + str(stats["items"]["created"]))
+    print("    - skipped : " + str(stats["items"]["skipped"]))
+    print("    - processed: " + str(stats["items"]["total"]))
     print()
-    print(
-        "  Total rows in DB for " + CATEGORY_NAME + " : " + str(total_items),
-    )
+    print("  Total rows in DB for " + category_name + " : " + str(total_items))
     print()
     print(
         "  Seed spec compliance: "
-        + str(len(SAWANIH_TAWAGEN_ORDERED))
-        + " base items in EXACT printed-menu order."
+        + str(base_count)
+        + " " + base_label + " in EXACT printed-menu order."
     )
+    print(sep)
+
+
+def _aggregate(stats_list: list) -> dict:
+    """Sum stats counters across multiple seed runs."""
+    agg = {
+        "categories": {"created": 0, "updated": 0, "total": 0},
+        "items":      {"created": 0, "updated": 0, "skipped": 0, "total": 0},
+    }
+    for s in stats_list:
+        for k1 in agg:
+            for k2 in agg[k1]:
+                agg[k1][k2] += s[k1][k2]
+    return agg
+
+
+def _print_grand_report(all_stats: list) -> None:
+    """Print a grand summary across all seeded categories."""
+    agg = _aggregate([s["stats"] for s in all_stats])
+    sep = "=" * 70
+    print()
+    print(sep)
+    print("  ALFHANA KITCHEN - GRAND SEED SUMMARY")
+    print(sep)
+    for entry in all_stats:
+        cat_total = MenuItem.objects.filter(
+            category__name=entry["category_name"],
+        ).count()
+        print(
+            "  " + entry["label"].ljust(18)
+            + " | items in run: " + str(entry["stats"]["items"]["total"]).rjust(3)
+            + " | total DB rows: " + str(cat_total),
+        )
+    print(sep)
+    print(
+        "  Total categories : " + str(agg["categories"]["total"])
+        + "   (new: " + str(agg["categories"]["created"])
+        + " / updated: " + str(agg["categories"]["updated"]) + ")"
+    )
+    print(
+        "  Total items run  : " + str(agg["items"]["total"])
+        + "   (new: " + str(agg["items"]["created"])
+        + " / skipped: " + str(agg["items"]["skipped"]) + ")"
+    )
+    grand_total = MenuItem.objects.count()
+    print("  Grand total MenuItem rows in DB : " + str(grand_total))
     print(sep)
 
 
@@ -298,9 +503,50 @@ def _print_report(stats: dict) -> None:
 # =====================================================================
 
 def run() -> None:
-    """Public entry point. Idempotent. Safe to call from exec(), shell, etc."""
-    stats = seed_sawanih_tawagen()
-    _print_report(stats)
+    """Public entry point. Idempotent. Seeds all menu sections."""
+    sawanih_stats = seed_sawanih_tawagen()
+    _print_single_report(
+        category_label=CATEGORY_NAME,
+        category_name=CATEGORY_NAME,
+        base_count=len(SAWANIH_TAWAGEN_ORDERED),
+        base_label="base items",
+        stats=sawanih_stats,
+    )
+
+    laham_stats = seed_laham()
+    _print_single_report(
+        category_label=LAHAM_CATEGORY_NAME,
+        category_name=LAHAM_CATEGORY_NAME,
+        base_count=len(LAHAM_ORDERED),
+        base_label="items",
+        stats=laham_stats,
+    )
+
+    weight_stats = seed_weight_based()
+    _print_single_report(
+        category_label=WEIGHT_CATEGORY_NAME,
+        category_name=WEIGHT_CATEGORY_NAME,
+        base_count=len(WEIGHT_ORDERED),
+        base_label="items",
+        stats=weight_stats,
+    )
+
+    extras_stats = seed_extras()
+    _print_single_report(
+        category_label=EXTRAS_CATEGORY_NAME,
+        category_name=EXTRAS_CATEGORY_NAME,
+        base_count=len(EXTRAS_ORDERED),
+        base_label="items",
+        stats=extras_stats,
+    )
+
+    all_stats = [
+        {"label": CATEGORY_NAME,       "category_name": CATEGORY_NAME,       "stats": sawanih_stats},
+        {"label": LAHAM_CATEGORY_NAME, "category_name": LAHAM_CATEGORY_NAME, "stats": laham_stats},
+        {"label": WEIGHT_CATEGORY_NAME,"category_name": WEIGHT_CATEGORY_NAME,"stats": weight_stats},
+        {"label": EXTRAS_CATEGORY_NAME,"category_name": EXTRAS_CATEGORY_NAME,"stats": extras_stats},
+    ]
+    _print_grand_report(all_stats)
 
 
 # Always run automatically. This file is explicitly designed as a ONE-SHOT
