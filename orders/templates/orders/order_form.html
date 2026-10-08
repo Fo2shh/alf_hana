@@ -899,6 +899,18 @@
             <div class="cashier-panel menu-panel">
 
                 <div class="panel-scroll">
+                    <!-- QUICK STRIP -->
+                    <div class="quick-strip" id="quickStrip">
+                        <div class="quick-strip-title">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                            الأكثر طلباً — إضافة سريعة بضغطة واحدة
+                        </div>
+                        <div class="quick-strip-list" id="quickList"></div>
+                    </div>
+
+                    <!-- TABS -->
+                    <div class="tab-bar" id="categoryTabs" role="tablist"></div>
+
                     <!-- SEARCH -->
                     <div class="picker-search">
                         <div class="search-wrap">
@@ -921,18 +933,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- QUICK STRIP -->
-                    <div class="quick-strip" id="quickStrip">
-                        <div class="quick-strip-title">
-                            <i class="bi bi-lightning-charge-fill"></i>
-                            الأكثر طلباً — إضافة سريعة بضغطة واحدة
-                        </div>
-                        <div class="quick-strip-list" id="quickList"></div>
-                    </div>
-
-                    <!-- TABS -->
-                    <div class="tab-bar" id="categoryTabs" role="tablist"></div>
 
                     <!-- GRID -->
                     <div class="grid-wrap">
@@ -1213,6 +1213,16 @@
             $customerSelect.on('select2:open', function() {
                 $('.select2-dropdown').addClass('customer-select-dropdown');
             });
+
+            // Close Select2 when focusing on menu search input to prevent conflicts
+            const menuSearchInput = document.getElementById('menuSearchInput');
+            if (menuSearchInput) {
+                menuSearchInput.addEventListener('focus', function() {
+                    if ($customerSelect.data('select2')) {
+                        $customerSelect.select2('close');
+                    }
+                });
+            }
         }, 200);
     });
 
