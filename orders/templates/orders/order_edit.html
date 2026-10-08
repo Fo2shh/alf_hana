@@ -82,11 +82,12 @@
         flex: 1;
         min-height: 0;
     }
-    /* CART PANEL: no internal scroll, natural height */
+    /* CART PANEL: fit content height, not full screen */
     .cashier-panel.cart-panel {
-        max-height: none;
+        max-height: fit-content;
         position: relative;
         top: auto;
+        height: auto;
     }
     @media (max-width: 960px) {
         .cashier-panel { position: relative; top: auto; max-height: none; }
@@ -457,6 +458,8 @@
         flex: 1; padding: 0.3rem 0.5rem;
         border: 1.5px solid #86d6a9; border-radius: 0.35rem;
         font-size: 0.88rem; outline: none;
+        direction: ltr;
+        text-align: right;
     }
     .inv-disc-row input:focus {
         border-color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,0.15);
@@ -573,6 +576,85 @@
         display: block;
         margin-bottom: 0.2rem;
     }
+
+    /* =============== CUSTOMER SELECT2 ENHANCEMENTS =============== */
+    .customer-select-dropdown {
+        border: 2px solid #d6dae3 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 4px 20px rgba(20, 30, 60, 0.15) !important;
+        font-family: inherit !important;
+    }
+
+    .customer-select-dropdown .select2-results__option {
+        padding: 0.6rem 0.9rem !important;
+        transition: background-color 0.15s ease !important;
+    }
+
+    .customer-select-dropdown .select2-results__option--highlighted {
+        background: linear-gradient(135deg, #e7f5ff 0%, #f0f8ff 100%) !important;
+        color: #1f2328 !important;
+    }
+
+    .customer-select-dropdown .select2-results__option[aria-selected="true"] {
+        background: #f0fff6 !important;
+        color: #198754 !important;
+        font-weight: 600 !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+        border: 2px solid #d6dae3 !important;
+        border-radius: 0.6rem !important;
+        height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #fff !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .select2-container--default .select2-selection--single:focus,
+    .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(13,110,253,0.08) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        padding-inline: 0.9rem !important;
+        font-size: 0.9rem !important;
+        color: #1f2328 !important;
+        line-height: 1.5 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #9ca3af !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+        inset-inline-end: 0.5rem !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: #6c757d transparent transparent transparent !important;
+        border-width: 5px 5px 0 5px !important;
+    }
+
+    .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+        border-color: transparent transparent #6c757d transparent !important;
+        border-width: 0 5px 5px 5px !important;
+    }
+
+    /* Custom clear button */
+    .select2-container--default .select2-selection--single .select2-selection__clear {
+        margin-inline-start: 0.5rem !important;
+        color: #dc3545 !important;
+        font-size: 1.2rem !important;
+        font-weight: bold !important;
+        line-height: 1 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #c82333 !important;
+    }
 </style>
 {% endblock %}
 
@@ -601,8 +683,8 @@
 
         <div class="customer-block">
             <label class="form-label fw-bold mb-1" style="font-size:0.82rem;">العميل</label>
-            <select class="form-select select2" id="customerSelect" name="customer_id" style="padding:0.4rem 0.7rem;font-size:0.9rem;">
-                <option value="">اختر عميلاً...</option>
+            <select class="form-select select2" id="customerSelect" name="customer_id" style="padding:0.4rem 0.7rem;font-size:0.9rem;" data-placeholder="ابحث بالاسم أو رقم الهاتف...">
+                <option value=""></option>
                 <option value="new">+ عميل جديد</option>
                 {% if order.customer %}
                     <option value="{{ order.customer.id }}" selected>{{ order.customer.name }} - {{ order.customer.phone }}</option>
@@ -855,10 +937,133 @@
     });
 
     /* ============================================================
-       CUSTOMER TOGGLE
+       CUSTOMER SELECT - Enhanced Select2 Configuration
        ============================================================ */
-    document.getElementById('customerSelect').addEventListener('change', function() {
-        document.getElementById('newCustomerFields').classList.toggle('d-none', this.value !== 'new');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit to ensure jQuery and Select2 are fully loaded
+        setTimeout(function() {
+            if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
+                console.log('jQuery or Select2 not available');
+                return;
+            }
+
+            const $customerSelect = $('#customerSelect');
+            if ($customerSelect.length === 0) return;
+
+            // Destroy any existing Select2 instance to avoid conflicts
+            if ($customerSelect.data('select2')) {
+                $customerSelect.select2('destroy');
+            }
+
+            // Move "new customer" option to the beginning of the list
+            const $newOption = $customerSelect.find('option[value="new"]');
+            if ($newOption.length > 0) {
+                $newOption.remove();
+                $customerSelect.prepend($newOption);
+            }
+
+            $customerSelect.select2({
+                dir: "rtl",
+                width: '100%',
+                placeholder: 'ابحث بالاسم أو رقم الهاتف...',
+                allowClear: true,
+                dropdownAutoWidth: true,
+                minimumInputLength: 0,
+                templateResult: function(data) {
+                    if (data.id === 'new') {
+                        return $('<div style="color: #198754; font-weight: 600; padding: 4px 0; border-bottom: 1px solid #e6e8ee; margin-bottom: 4px;">' +
+                            '<i class="bi bi-person-plus"></i> + عميل جديد' +
+                            '</div>');
+                    }
+                    if (!data.id) return $(data.text);
+
+                    // Parse "Name - Phone" format
+                    const parts = data.text.split(' - ');
+                    const name = parts[0] || data.text;
+                    const phone = parts[1] || '';
+
+                    return $('<div style="padding: 4px 0;">' +
+                        '<div style="font-weight: 600; color: #1f2328;">' + name + '</div>' +
+                        (phone ? '<div style="font-size: 0.85rem; color: #6c757d;">' + phone + '</div>' : '') +
+                        '</div>');
+                },
+                templateSelection: function(data) {
+                    if (data.id === 'new') {
+                        // Get the name from the input field if it exists
+                        const nameInput = document.getElementById('customerName');
+                        const name = nameInput ? nameInput.value.trim() : '';
+                        if (name) {
+                            return name;
+                        }
+                        return 'عميل جديد';
+                    }
+                    if (!data.id) return data.text;
+
+                    // Return full text (Name - Phone) for edit page
+                    return data.text;
+                },
+                language: {
+                    noResults: function() {
+                        return '';
+                    },
+                    searching: function() {
+                        return '<div style="padding: 8px; text-align: center; color: #6c757d;">' +
+                            '<i class="bi bi-search"></i> جاري البحث...' +
+                            '</div>';
+                    },
+                    inputTooShort: function() {
+                        return 'اكتب للبحث...';
+                    }
+                },
+                matcher: function(params, data) {
+                    // Custom matcher to search both name and phone
+                    if ($.trim(params.term) === '') {
+                        return data;
+                    }
+
+                    // Exclude "new customer" from search results
+                    if (data.id === 'new') {
+                        return null;
+                    }
+
+                    // Search in the full text (name - phone)
+                    const term = params.term.toLowerCase();
+                    const text = data.text.toLowerCase();
+
+                    if (text.indexOf(term) > -1) {
+                        return data;
+                    }
+
+                    return null;
+                }
+            });
+
+            // Toggle new customer fields
+            $customerSelect.on('change', function() {
+                const value = $(this).val();
+                const newCustomerFields = document.getElementById('newCustomerFields');
+                if (newCustomerFields) {
+                    newCustomerFields.classList.toggle('d-none', value !== 'new');
+                }
+
+                // Reset display when switching away from "new customer"
+                if (value !== 'new') {
+                    const $selection = $customerSelect.next('.select2-container').find('.select2-selection__rendered');
+                    if ($selection.length > 0) {
+                        $selection.html($customerSelect.find('option:selected').text());
+                    }
+                }
+            });
+
+            // Update display when typing new customer name - trigger Select2 update
+            $(document).on('input', '#customerName', function() {
+                const value = $customerSelect.val();
+                if (value === 'new') {
+                    // Trigger Select2 to re-render the selection
+                    $customerSelect.trigger('change.select2');
+                }
+            });
+        }, 200);
     });
 
     /* ============================================================
@@ -1123,14 +1328,28 @@
     }
     function updateItemDiscount(index, value) {
         const item = selectedItems[index];
-        item.discount = value === '' ? null : Number(value);
+        // Keep the discount as entered, treat empty as 0 for calculation
+        const numValue = value === '' ? 0 : Number(value);
+        item.discount = numValue;
         item.price = Number.isInteger(item.discount) && item.discount >= 0 && item.discount <= item.regularPrice
             ? item.regularPrice - item.discount
-            : null;
+            : item.regularPrice;
         const input = document.getElementById(`itemDiscount${index}`);
         if (input) input.setCustomValidity(item.price !== null ? '' : 'أدخل خصمًا صحيحًا لا يتجاوز السعر');
         updateTotal();
-        if (item.price !== null) renderSelectedItems();
+        // Update line total without re-rendering the entire row
+        const row = input.closest('.inv-row');
+        if (row) {
+            const lineTotalEl = row.querySelector('.inv-line-total');
+            const unitPriceEl = row.querySelector('.inv-unit-price');
+            if (lineTotalEl) {
+                const lineTotal = (Number(item.price) || 0) * item.quantity;
+                lineTotalEl.textContent = lineTotal.toFixed(0) + ' ج.م';
+            }
+            if (unitPriceEl) {
+                unitPriceEl.textContent = (Number(item.price) || 0) + ' × ' + item.quantity;
+            }
+        }
     }
     function changeQuantity(index, delta) {
         selectedItems[index].quantity += delta;
