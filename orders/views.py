@@ -1,10 +1,32 @@
+import json
+import math
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 from core.models import Order, MenuItem, Customer, User
 from decimal import Decimal, InvalidOperation
-import json
+
+
+def _safe_parse_float(value):
+    """Safely parse a coordinate string into a float, returning None on any error.
+
+    Never raises ValueError — matches project rule: coordinate inputs must be
+    processed with exception-free helpers to avoid crashes from bad text/links.
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    try:
+        f = float(s)
+    except (ValueError, TypeError):
+        return None
+    if not math.isfinite(f):
+        return None
+    return f
 
 
 def _parse_whole_price(value):

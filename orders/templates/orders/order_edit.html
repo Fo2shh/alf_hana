@@ -16,12 +16,14 @@
         --cashier-gap: 1rem;
     }
     html, body { height: 100%; }
-    body { background: #f4f6fb; }
+    body {
+        background-color: #193b36;
+    }
 
     .page-wrapper {
         max-width: 1900px;
         margin: 0 auto;
-        padding: 0 0.75rem var(--cashier-gap);
+        padding: 0.75rem 0.75rem var(--cashier-gap);
     }
 
     .cashier-topbar {
@@ -65,12 +67,26 @@
         border: 1px solid var(--border);
         border-radius: 0.85rem;
         overflow: hidden;
-        box-shadow: 0 2px 12px rgba(20,30,60,0.04);
+        box-shadow: 0 2px 12px rgba(20, 30, 60, 0.04);
         position: sticky;
         top: calc(var(--cashier-topbar-h) + 0.5rem);
         max-height: calc(100vh - var(--cashier-topbar-h) - 1.25rem);
         display: flex;
         flex-direction: column;
+    }
+    /* MENU PANEL: twice the height to show more categories/items */
+    .cashier-panel.menu-panel {
+        max-height: calc(200vh - var(--cashier-topbar-h) - 2rem);
+    }
+    .cashier-panel.menu-panel .panel-scroll {
+        flex: 1;
+        min-height: 0;
+    }
+    /* CART PANEL: no internal scroll, natural height */
+    .cashier-panel.cart-panel {
+        max-height: none;
+        position: relative;
+        top: auto;
     }
     @media (max-width: 960px) {
         .cashier-panel { position: relative; top: auto; max-height: none; }
@@ -134,9 +150,24 @@
     }
     .quick-strip-list {
         display: flex; gap: 0.5rem; overflow-x: auto;
-        padding-bottom: 0.3rem; scrollbar-width: thin;
+        padding-bottom: 0.3rem;
+        scrollbar-width: thin;
+        scrollbar-color: #193b36 rgba(25, 59, 54, 0.12);
     }
-    .quick-strip-list::-webkit-scrollbar { height: 4px; }
+    .quick-strip-list::-webkit-scrollbar { height: 10px; width: 10px; }
+    .quick-strip-list::-webkit-scrollbar-track {
+        background: rgba(25, 59, 54, 0.12);
+        border-radius: 999px;
+        border: 2px solid #fff8e6;
+    }
+    .quick-strip-list::-webkit-scrollbar-thumb {
+        background: #193b36;
+        border: 2px solid #fff8e6;
+        border-radius: 999px;
+    }
+    .quick-strip-list::-webkit-scrollbar-thumb:hover {
+        background: #0f2c28;
+    }
     .quick-chip {
         flex-shrink: 0; background: #fff; border: 1.5px solid #ffd166;
         border-radius: 999px; padding: 0.5rem 0.9rem 0.5rem 0.5rem;
@@ -157,13 +188,32 @@
     .quick-chip .chip-name { font-size: 0.85rem; font-weight: 600; color: #1f2328; }
     .quick-chip .chip-price { font-size: 0.75rem; color: #c47a00; }
 
+    /* ---- Tabs (auto-flow: 2 rows vertical, columns filled as needed) ---- */
     .tab-bar {
         padding: 0.8rem 1rem;
         border-bottom: 1px solid var(--border);
         background: #fafbfd;
-        display: flex; gap: 0.45rem; overflow-x: auto; scrollbar-width: thin;
+        display: grid;
+        grid-template-rows: repeat(2, minmax(42px, auto));
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(140px, 1fr);
+        gap: 0.5rem;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #193b36 rgba(25, 59, 54, 0.12);
     }
-    .tab-bar::-webkit-scrollbar { height: 4px; }
+    .tab-bar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .tab-bar::-webkit-scrollbar-track {
+        background: rgba(25, 59, 54, 0.12);
+        border-radius: 999px;
+        border: 2px solid #fafbfd;
+    }
+    .tab-bar::-webkit-scrollbar-thumb {
+        background: #193b36;
+        border: 2px solid #fafbfd;
+        border-radius: 999px;
+    }
+    .tab-bar::-webkit-scrollbar-thumb:hover { background: #0f2c28; }
     .tab-btn {
         flex-shrink: 0; border: 1.5px solid #dce0e7; background: #fff;
         color: #4a5160; padding: 0.5rem 0.95rem;
@@ -172,16 +222,20 @@
         transition: all 0.15s ease;
         display: flex; align-items: center; gap: 0.4rem;
     }
-    .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tab-btn:hover { border-color: #1e40af; color: #1e40af; }
     .tab-btn.active {
-        background: var(--primary); border-color: var(--primary); color: #fff;
-        box-shadow: 0 2px 6px rgba(13,110,253,0.3);
+        background: #1e40af; border-color: #1e40af; color: #ffffff !important;
+        box-shadow: 0 2px 6px rgba(30, 64, 175, 0.45);
     }
     .tab-btn .tab-count {
         font-size: 0.7rem; background: rgba(0,0,0,0.07);
         padding: 0.05rem 0.45rem; border-radius: 999px;
+        color: #374151;
     }
-    .tab-btn.active .tab-count { background: rgba(255,255,255,0.2); }
+    .tab-btn.active .tab-count {
+        background: rgba(255,255,255,0.25);
+        color: #ffffff;
+    }
 
     .grid-wrap { padding: 1rem; }
     .menu-grid {
@@ -193,8 +247,8 @@
 
     .item-card {
         position: relative;
-        border: 1.5px solid #e6e8ee;
-        background: #fff;
+        border: 1.5px solid #dfe4ec;
+        background: #f5f6f9;
         border-radius: 0.65rem;
         padding: 0.7rem 0.7rem 0.75rem;
         cursor: pointer;
@@ -203,17 +257,49 @@
         display: flex; flex-direction: column; justify-content: space-between;
         gap: 0.4rem;
         text-align: right;
+        box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04);
+    }
+    .item-card:nth-child(4n-1),
+    .item-card:nth-child(4n) {
+        background: #fbfcfe;
+    }
+    @media (min-width: 780px) {
+        .item-card:nth-child(6n+4),
+        .item-card:nth-child(6n+5),
+        .item-card:nth-child(6n+6) {
+            background: #fbfcfe;
+        }
+        .item-card:nth-child(6n+1),
+        .item-card:nth-child(6n+2),
+        .item-card:nth-child(6n+3) {
+            background: #f5f6f9;
+        }
+    }
+    @media (min-width: 1280px) {
+        .item-card:nth-child(8n+5),
+        .item-card:nth-child(8n+6),
+        .item-card:nth-child(8n+7),
+        .item-card:nth-child(8n+8) {
+            background: #fbfcfe;
+        }
+        .item-card:nth-child(8n+1),
+        .item-card:nth-child(8n+2),
+        .item-card:nth-child(8n+3),
+        .item-card:nth-child(8n+4) {
+            background: #f5f6f9;
+        }
     }
     .item-card:hover {
-        border-color: var(--primary); transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(20,30,60,0.07);
+        border-color: #1e40af; transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(20,30,60,0.09);
+        background: #ffffff;
     }
     .item-card.selected {
-        border-color: #198754; background: #f0fff6;
-        box-shadow: 0 0 0 2px rgba(25,135,84,0.15);
+        border-color: #198754; background: #f0fff6 !important;
+        box-shadow: 0 0 0 2px rgba(25,135,84,0.2);
     }
     .item-card.weight-hint { background: #fff7ee; border-color: #ffcf9c; }
-    .item-card.weight-hint.selected { background: #fff1e0; border-color: #e67e22; }
+    .item-card.weight-hint.selected { background: #fff1e0 !important; border-color: #e67e22; }
     .item-card .card-top {
         display: flex; justify-content: space-between; align-items: flex-start; gap: 0.3rem;
     }
@@ -265,27 +351,32 @@
     .cart-header {
         padding: 0.95rem 1.1rem;
         border-bottom: 1px solid var(--border);
-        background: linear-gradient(135deg,#c0392b 0%,#e74c3c 100%);
+        background: linear-gradient(135deg, #198754 0%, #0f6e42 100%);
         color: #fff;
         display: flex; justify-content: space-between; align-items: center;
+        box-shadow: 0 3px 10px rgba(25,135,84,0.25);
     }
     .cart-header .ch-title {
         display: flex; align-items: center; gap: 0.5rem;
         font-weight: 700; font-size: 1rem;
+        color: #fff;
     }
     .cart-header .ch-count {
-        background: rgba(255,255,255,0.18);
-        padding: 0.15rem 0.65rem;
+        background: rgba(255,255,255,0.2);
+        color: #fff;
+        padding: 0.25rem 0.85rem;
         border-radius: 999px;
-        font-size: 0.82rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .cart-body {
-        overflow-y: auto; flex: 1; min-height: 0;
+        overflow: visible;
+        flex: 0 0 auto;
+        min-height: auto;
         padding: 0.75rem 1rem;
     }
-    .cart-body::-webkit-scrollbar { width: 8px; }
-    .cart-body::-webkit-scrollbar-thumb { background: #cdd3de; border-radius: 4px; }
 
     .cart-empty {
         padding: 3rem 1rem; text-align: center; color: #8a93a5;
@@ -498,6 +589,9 @@
     </div>
     {% endif %}
 
+    <form method="post" id="orderForm">
+        {% csrf_token %}
+
     <div class="cashier-topbar">
         <div class="page-title">
             <i class="bi bi-pencil-square"></i>
@@ -548,9 +642,6 @@
         </div>
     </div>
 
-    <form method="post" id="orderForm">
-        {% csrf_token %}
-
         <div class="cashier-grid">
 
             <!-- LEFT: MENU -->
@@ -561,7 +652,7 @@
                         <div class="search-wrap">
                             <i class="bi bi-search"></i>
                             <input type="search" id="menuSearchInput"
-                                   placeholder="ابحث باسم الصنف (Ctrl+K للتركيز)"
+                                   placeholder="ابحث باسم الصنف"
                                    autocomplete="off">
                         </div>
                         <div class="picker-summary">
