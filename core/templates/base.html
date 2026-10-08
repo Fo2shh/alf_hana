@@ -1,18 +1,23 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}مطبخ الف هنا{% endblock %}</title>
-    
-    <!-- Bootstrap 5 RTL -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Mapbox GL JS CSS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- Bootstrap 5 RTL (local with CDN fallback) -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.rtl.min.css' %}"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css'">
+    <!-- Bootstrap Icons (local with CDN fallback) -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css'">
+    <!-- Leaflet CSS (local with CDN fallback) -->
+    <link rel="stylesheet" href="{% static 'css/leaflet.css' %}"
+          onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+    <!-- Mapbox GL JS CSS (CDN only - requires Mapbox API) -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"
+          onerror="console.warn('Mapbox GL CSS failed to load. Maps may not work without internet.')" />
     
     <style>
         :root {
@@ -864,6 +869,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/admin/">لوحة الأدمن</a></li>
+                            <li><a class="dropdown-item" href="{% url 'admin_tools' %}">أدوات إدارية</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/logout/">تسجيل الخروج</a></li>
                         </ul>
@@ -878,17 +884,23 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- jQuery (required for Select2) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Mapbox GL JS -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-    <!-- Select2 for better dropdowns -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- jQuery (required for Select2) - local with CDN fallback -->
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}"
+            onerror="this.onerror=null;this.src='https://code.jquery.com/jquery-3.7.1.min.js'"></script>
+    <!-- Bootstrap JS - local with CDN fallback -->
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'"></script>
+    <!-- Leaflet JS - local with CDN fallback -->
+    <script src="{% static 'js/leaflet.js' %}"
+            onerror="this.onerror=null;this.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'"></script>
+    <!-- Mapbox GL JS (CDN only - requires Mapbox API) -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"
+            onerror="console.warn('Mapbox GL JS failed to load. Maps may not work without internet.')"></script>
+    <!-- Select2 for better dropdowns - local with CDN fallback -->
+    <link href="{% static 'css/select2.min.css' %}" rel="stylesheet"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css'" />
+    <script src="{% static 'js/select2.min.js' %}"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js'"></script>
 
     <script>
         // Highlight active nav link

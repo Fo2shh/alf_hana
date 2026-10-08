@@ -49,3 +49,8 @@ Thumbs.db
 # Media files (if large)
 media/*
 !media/.gitkeep
+
+# Menu backups (auto-generated)
+menu_backups/*.json
+menu_backups/latest_backup.txt
+!menu_backups/.gitkeep

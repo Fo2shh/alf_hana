@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_admin
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
@@ -22,4 +23,11 @@ urlpatterns = [
     path('api/menu-search/', views.api_menu_search, name='api_menu_search'),
     path('api/driver-location/', views.api_driver_location, name='api_driver_location'),
     path('api/driver-locations/', views.api_driver_locations, name='api_driver_locations'),
+    # Admin Tools
+    path('admin-tools/', views_admin.admin_tools, name='admin_tools'),
+    path('admin-tools/backup-menu/', views_admin.backup_menu_now, name='backup_menu_now'),
+    path('admin-tools/restore-menu/', views_admin.restore_menu_now, name='restore_menu_now'),
+    path('admin-tools/delete-all-data/', views_admin.delete_all_data, name='delete_all_data'),
+    path('admin-tools/hard-reset/', views_admin.hard_reset_database, name='hard_reset_database'),
+    path('admin-tools/seed-menu/', views_admin.seed_menu_now, name='seed_menu_now'),
 ]

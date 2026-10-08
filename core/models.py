@@ -283,3 +283,52 @@ class Trip(models.Model):
     
     def __str__(self):
         return f"رحلة {self.driver.username} - {self.started_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+# ============================================================
+# AUTO-BACKUP SIGNALS
+# ============================================================
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.core.management import call_command
+from threading import Thread
+import os
+
+# Flag to prevent backup during restore operations
+_BACKUP_ENABLED = True
+
+
+def is_backup_enabled():
+    """Check if backup is enabled (not during restore operations)"""
+    global _BACKUP_ENABLED
+    return _BACKUP_ENABLED
+
+
+def set_backup_enabled(enabled):
+    """Enable or disable backup"""
+    global _BACKUP_ENABLED
+    _BACKUP_ENABLED = enabled
+
+
+def backup_menu_async():
+    """تشغيل backup في thread منفصل لتجنب التأخير"""
+    if not is_backup_enabled():
+        return
+    try:
+        call_command('backup_menu')
+    except Exception as e:
+        print(f"Backup failed: {e}")
+
+
+@receiver(post_save, sender=MenuItem)
+@receiver(post_save, sender=Category)
+@receiver(post_save, sender=Customer)
+@receiver(post_delete, sender=MenuItem)
+@receiver(post_delete, sender=Category)
+@receiver(post_delete, sender=Customer)
+def auto_backup_on_change(sender, instance, **kwargs):
+    """نسخ احتياطي تلقائي بعد أي تعديل على المنيو والعملاء"""
+    # تشغيل في thread منفصل لتجنب إبطاء الـ save
+    # استخدام daemon=False لضمان اكتمال الـ backup
+    t = Thread(target=backup_menu_async, daemon=False)
+    t.start()

@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}أدوات إدارية - مطبخ الف هنا{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-tools-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 2rem;
+    }
+
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .tool-card {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .tool-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .tool-card.danger {
+        border-color: #dc3545;
+        background: #fff5f5;
+    }
+
+    .tool-card.warning {
+        border-color: #ffc107;
+        background: #fffbf0;
+    }
+
+    .tool-card.success {
+        border-color: #198754;
+        background: #f0fff6;
+    }
+
+    .tool-card.info {
+        border-color: #0dcaf0;
+        background: #e7f5ff;
+    }
+
+    .tool-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .tool-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #1f2328;
+    }
+
+    .tool-description {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+
+    .tool-btn {
+        width: 100%;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .tool-btn:hover {
+        transform: scale(1.02);
+    }
+
+    .tool-btn.btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+
+    .tool-btn.btn-danger:hover {
+        background: #c82333;
+    }
+
+    .tool-btn.btn-warning {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .tool-btn.btn-warning:hover {
+        background: #e0a800;
+    }
+
+    .tool-btn.btn-success {
+        background: #198754;
+        color: #fff;
+    }
+
+    .tool-btn.btn-success:hover {
+        background: #157347;
+    }
+
+    .tool-btn.btn-info {
+        background: #0dcaf0;
+        color: #fff;
+    }
+
+    .tool-btn.btn-info:hover {
+        background: #0aa2c0;
+    }
+
+    .backups-section {
+        margin-top: 3rem;
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .backups-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .backups-table th,
+    .backups-table td {
+        padding: 0.75rem;
+        text-align: right;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .backups-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .latest-badge {
+        background: #198754;
+        color: #fff;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        max-width: 500px;
+        width: 90%;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #dc3545;
+    }
+
+    .modal-warning {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .modal-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #dc3545;
+        border-radius: 8px;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: 2px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-btn-cancel {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .modal-btn-confirm {
+        background: #dc3545;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-tools-container">
+    <h1 class="text-center mb-4">
+        <i class="bi bi-tools"></i> أدوات إدارية
+    </h1>
+    <p class="text-center text-muted">استخدم هذه الأدوات بحذر - بعضها لا يمكن التراجع عنه</p>
+
+    <div class="tools-grid">
+        <!-- Backup Menu -->
+        <div class="tool-card success">
+            <div class="tool-icon">💾</div>
+            <div class="tool-title">نسخ احتياطي للمنيو والعملاء</div>
+            <div class="tool-description">
+                حفظ نسخة احتياطية فورية من المنيو والعملاء الحالي. آمن ولا يحذف أي شيء.
+            </div>
+            <a href="{% url 'backup_menu_now' %}" class="tool-btn btn-success">
+                <i class="bi bi-download"></i> نسخ احتياطي
+            </a>
+        </div>
+
+        <!-- Restore Menu -->
+        <div class="tool-card info">
+            <div class="tool-icon">🔄</div>
+            <div class="tool-title">استعادة المنيو والعملاء</div>
+            <div class="tool-description">
+                استعادة المنيو والعملاء من آخر نسخة احتياطية. آمن ولا يحذف الطلبات.
+            </div>
+            <form method="post" action="{% url 'restore_menu_now' %}">
+                {% csrf_token %}
+                <button type="submit" class="tool-btn btn-info">
+                    <i class="bi bi-arrow-counterclockwise"></i> استعادة
+                </button>
+            </form>
+        </div>
+
+        <!-- Seed Menu -->
+        <div class="tool-card info">
+            <div class="tool-icon">📋</div>
+            <div class="tool-title">استيراد من seed_menu.py</div>
+            <div class="tool-description">
+                إعادة استيراد المنيو من ملف seed_menu.py. سيستبدل التعديلات الحالية.
+            </div>
+            <form method="post" action="{% url 'seed_menu_now' %}">
+                {% csrf_token %}
+                <button type="submit" class="tool-btn btn-info">
+                    <i class="bi bi-file-earmark-code"></i> استيراد
+                </button>
+            </form>
+        </div>
+
+        <!-- Delete All Data -->
+        <div class="tool-card warning">
+            <div class="tool-icon">🗑️</div>
+            <div class="tool-title">حذف كل البيانات واستعادة المنيو والعملاء</div>
+            <div class="tool-description">
+                حذف الطلبات والرحلات والمواقع والمنيو والعملاء، ثم استعادة المنيو والعملاء من النسخة الاحتياطية.
+            </div>
+            <button type="button" class="tool-btn btn-warning" onclick="showDeleteModal('delete-all-data')">
+                <i class="bi bi-trash"></i> حذف واستعادة
+            </button>
+        </div>
+
+        <!-- Hard Reset -->
+        <div class="tool-card danger">
+            <div class="tool-icon">⚠️</div>
+            <div class="tool-title">إعادة تعيين كاملة</div>
+            <div class="tool-description">
+                حذف كل شيء بما في ذلك الداتا بيز. إعادة البناء من الصفر مع استعادة المنيو والعملاء.
+            </div>
+            <button type="button" class="tool-btn btn-danger" onclick="showDeleteModal('hard-reset')">
+                <i class="bi bi-exclamation-triangle"></i> إعادة تعيين
+            </button>
+        </div>
+    </div>
+
+    <!-- Backups Info -->
+    <div class="backups-section">
+        <h3><i class="bi bi-clock-history"></i> النسخ الاحتياطية الحالية</h3>
+        {% if backups %}
+        <table class="backups-table">
+            <thead>
+                <tr>
+                    <th>اسم الملف</th>
+                    <th>الحجم</th>
+                    <th>آخر تعديل</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for backup in backups %}
+                <tr>
+                    <td>{{ backup.filename }}</td>
+                    <td>{{ backup.size }} bytes</td>
+                    <td>{{ backup.modified }}</td>
+                    <td>
+                        {% if backup.is_latest %}
+                        <span class="latest-badge">الأحدث</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">لا توجد نسخ احتياطية</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-title">
+            <i class="bi bi-exclamation-triangle"></i> تأكيد الحذف
+        </div>
+        <div class="modal-warning">
+            <strong>تحذير: هذا الإجراء لا يمكن التراجع عنه!</strong>
+        <p>سيتم حذف جميع البيانات المحددة.</p>
+        {% if action_type == 'hard-reset' %}
+        <p class="text-danger">سيتم حذف الداتا بيز بالكامل وإعادة بنائها!</p>
+        {% endif %}
+        </div>
+        <form id="deleteForm" method="post">
+            {% csrf_token %}
+            <label>اكتب كلمة التأكيد:</label>
+            <input type="text" id="confirmationInput" name="confirmation" class="modal-input" placeholder="اكتب هنا" autocomplete="off">
+            <p class="text-muted small" id="requiredText">مطلوب: <span id="requiredCode"></span></p>
+            <div class="modal-buttons">
+                <button type="button" class="modal-btn modal-btn-cancel" onclick="hideDeleteModal()">
+                    إلغاء
+                </button>
+                <button type="submit" class="modal-btn modal-btn-confirm" id="confirmBtn" disabled>
+                    تأكيد الحذف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentAction = '';
+
+function showDeleteModal(action) {
+    currentAction = action;
+    const modal = document.getElementById('deleteModal');
+    const requiredCode = action === 'hard-reset' ? 'HARD_RESET_DB' : 'DELETE_ALL_DATA';
+    const requiredText = document.getElementById('requiredCode');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const form = document.getElementById('deleteForm');
+    
+    requiredText.textContent = requiredCode;
+    confirmBtn.disabled = true;
+    
+    if (action === 'hard-reset') {
+        form.action = '/admin-tools/hard-reset/';
+    } else {
+        form.action = '/admin-tools/delete-all-data/';
+    }
+    
+    modal.classList.add('show');
+    document.getElementById('confirmationInput').value = '';
+    document.getElementById('confirmationInput').focus();
+}
+
+function hideDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('show');
+}
+
+document.getElementById('confirmationInput').addEventListener('input', function(e) {
+    const requiredCode = currentAction === 'hard-reset' ? 'HARD_RESET_DB' : 'DELETE_ALL_DATA';
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.disabled = e.target.value !== requiredCode;
+});
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideDeleteModal();
+    }
+});
+</script>
+
+{% block extra_js %}
+{% endblock %}
+{% endblock %}
