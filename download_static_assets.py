@@ -24,6 +24,15 @@ ASSETS = {
         ('leaflet.js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
         ('select2.min.js', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js'),
     ],
+    'fonts/bootstrap-icons': [
+        ('bootstrap-icons.woff', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff'),
+        ('bootstrap-icons.woff2', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff2'),
+    ],
+    'images': [
+        ('marker-icon.png', 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png'),
+        ('marker-icon-2x.png', 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png'),
+        ('marker-shadow.png', 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'),
+    ],
 }
 
 def download_file(url, dest):
@@ -48,6 +57,10 @@ def main():
     total_count = 0
 
     for subdir, files in ASSETS.items():
+        # Create nested directories if needed
+        if '/' in subdir:
+            (STATIC_DIR / subdir).mkdir(parents=True, exist_ok=True)
+
         for filename, url in files:
             total_count += 1
             dest = STATIC_DIR / subdir / filename
