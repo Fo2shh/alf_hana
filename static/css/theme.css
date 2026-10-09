@@ -493,6 +493,17 @@ html { overflow-x: hidden; }
 .order-status-delivered { background-color: #d4edda !important; }
 .order-status-cancelled { background-color: #f8d7da; }
 
+/* ---- Customer name link in order lists (dashboard) ---- */
+.order-customer-link {
+    color: #244740;
+    font-size: larger;
+    transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+a.order-customer-link:hover {
+    color: #cc2a2a;
+    text-decoration: underline !important;
+}
+
 /* ---- Driver assignment form (order lists / dashboard) ---- */
 .driver-assign-form { width: 154px; min-width: 154px; }
 .driver-assign-form .form-select { width: 118px; flex: 0 0 118px; min-width: 0; }

@@ -56,10 +56,10 @@
                                 </td>
                                 <td>
                                     {% if order.customer %}
-                                        <a href="{% url 'order_detail' order.pk %}" class="order-customer-link text-decoration-none fw-semibold">{{ order.customer.name }}</a>
+                                        <a href="{% url 'customer_edit' order.customer.pk %}" class="order-customer-link text-decoration-none fw-semibold">{{ order.customer.name }}</a>
                                         <br><small class="text-muted">{{ order.customer.phone }}</small>
                                     {% else %}
-                                        <a href="{% url 'order_detail' order.pk %}" class="order-customer-link text-decoration-none fw-semibold">{{ order.customer_name }}</a>
+                                        <span class="order-customer-link fw-semibold">{{ order.customer_name }}</span>
                                         <br><small class="text-muted">{{ order.customer_phone }}</small>
                                     {% endif %}
                                 </td>

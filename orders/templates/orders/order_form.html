@@ -180,14 +180,15 @@
                                    value="">
                         </div>
                     </div>
-                    <div class="summary-grand">
-                        <span class="label"><i class="bi bi-wallet2"></i> الإجمالي</span>
-                        <span class="value" id="totalAmount">0 ج.م</span>
-                    </div>
 
                     <div class="notes-wrap">
                         <label for="notes"><i class="bi bi-chat-left-text"></i> ملاحظات الطلب</label>
                         <textarea id="notes" name="notes" rows="3" placeholder="أي تعليمات خاصة للتحضير أو التوصيل..."></textarea>
+                    </div>
+
+                    <div class="summary-grand">
+                        <span class="label"><i class="bi bi-wallet2"></i> الإجمالي</span>
+                        <span class="value" id="totalAmount">0 ج.م</span>
                     </div>
 
                     <div class="cart-actions">
@@ -717,36 +718,40 @@
             const isCustom = item.isCustom || false;
 
             row.innerHTML = `
-                <div class="inv-idx">${idx + 1}</div>
-                <div class="inv-info">
-                    <div class="inv-name"></div>
-                    <div class="inv-meta">
-                        ${isCustom ? '<span class="inv-weight">⭐ مخصص</span>' : (item.regularPrice > 0 ? `<span>الوحدة: ${item.regularPrice} ج.م</span>` : `<span class="inv-weight">⭐ حسب الوزن</span>`)}
-                        ${hasDisc && !isCustom ? `<span class="inv-disc">خصم ${item.discount} ج.م</span>` : ''}
+                <div class="inv-top">
+                    <div class="inv-info">
+                        <div class="inv-name"></div>
+                        <div class="inv-meta">
+                            ${isCustom ? '<span class="inv-weight">⭐ مخصص</span>' : (item.regularPrice > 0 ? `<span>الوحدة: ${item.regularPrice} ج.م</span>` : `<span class="inv-weight">⭐ حسب الوزن</span>`)}
+                            ${hasDisc && !isCustom ? `<span class="inv-disc">خصم ${item.discount} ج.م</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="inv-price-col">
+                        ${hasDisc && !isCustom ? `<div class="inv-unit-price">${(item.regularPrice - item.discount)} × ${item.quantity}</div>` : `<div class="inv-unit-price">${item.regularPrice} × ${item.quantity}</div>`}
+                        <div class="inv-line-total">${lineTotal.toFixed(0)} ج.م</div>
                     </div>
                 </div>
-                <div class="inv-qty">
-                    <button type="button" title="نقصان" onclick="changeQuantity(${idx}, -1)">−</button>
-                    <span>${item.quantity}</span>
-                    <button type="button" title="زيادة" onclick="changeQuantity(${idx}, 1)">+</button>
-                </div>
-                <div class="inv-actions">
-                    ${!isCustom ? `
-                    <button type="button" class="inv-act-btn act-disc"
-                            title="${hasDisc ? 'تعديل الخصم' : 'إضافة خصم'}"
-                            onclick="toggleItemDiscount(${idx})">
-                        <i class="bi ${hasDisc ? 'bi-percent' : 'bi-tag'}"></i>
-                    </button>
-                    ` : ''}
-                    <button type="button" class="inv-act-btn act-del"
-                            title="حذف الصنف"
-                            onclick="removeItem(${idx})">
-                        <i class="bi bi-trash3-fill"></i>
-                    </button>
-                </div>
-                <div class="inv-price-col">
-                    ${hasDisc && !isCustom ? `<div class="inv-unit-price">${(item.regularPrice - item.discount)} × ${item.quantity}</div>` : `<div class="inv-unit-price">${item.regularPrice} × ${item.quantity}</div>`}
-                    <div class="inv-line-total">${lineTotal.toFixed(0)} ج.م</div>
+                <div class="inv-bottom">
+                    <div class="inv-qty">
+                        <button type="button" title="زيادة" onclick="changeQuantity(${idx}, 1)">+</button>
+                        <span>${item.quantity}</span>
+                        <button type="button" title="نقصان" onclick="changeQuantity(${idx}, -1)">−</button>
+                    </div>
+                    <div class="inv-actions">
+                        ${!isCustom ? `
+                        <button type="button" class="inv-act-btn act-disc"
+                                title="${hasDisc ? 'تعديل الخصم' : 'إضافة خصم'}"
+                                data-active="${hasDisc ? 'true' : 'false'}"
+                                onclick="toggleItemDiscount(${idx})">
+                            <i class="bi ${hasDisc ? 'bi-percent' : 'bi-tag'}"></i>
+                        </button>
+                        ` : ''}
+                        <button type="button" class="inv-act-btn act-del"
+                                title="حذف الصنف"
+                                onclick="removeItem(${idx})">
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
+                    </div>
                 </div>
                 ${!isCustom && item.discountOpen ? `
                 <div class="inv-disc-row">
