@@ -2,57 +2,6 @@
 
 {% block title %}قائمة الطلبات - مطبخ الف هنا{% endblock %}
 
-{% block extra_css %}
-<style>
-    @media (max-width: 768px) {
-        .table-responsive {
-            width: 100vw;
-            margin-left: calc(-50vw + 50%);
-            margin-right: calc(-50vw + 50%);
-            border-radius: 0;
-        }
-
-        .order-list-table {
-            min-width: 900px;
-        }
-
-        /* Action buttons */
-        .table .btn {
-            margin: 2px;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-        }
-
-        /* Card header buttons */
-        .card-header .btn {
-            font-size: 0.875rem;
-            padding: 0.375rem 0.75rem;
-        }
-
-        /* Driver assignment form */
-        .driver-assign-form {
-            min-width: 180px;
-        }
-
-        .driver-assign-form .form-select {
-            width: 140px;
-            font-size: 0.875rem;
-        }
-
-        .driver-assign-form button {
-            width: 36px;
-            height: 36px;
-        }
-
-        /* Status badge */
-        .badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-12">
