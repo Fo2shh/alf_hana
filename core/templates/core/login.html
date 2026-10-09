@@ -15,7 +15,8 @@
         }
 
         body {
-            background: linear-gradient(135deg, #193b36 0%, #2e7d6b 100%);
+            background: #244740;
+            color: #0f1c1a;
             font-family: "Cairo", "Segoe UI", Tahoma, sans-serif;
             min-height: 100vh;
             display: flex;
@@ -23,9 +24,10 @@
             justify-content: center;
         }
         .login-card {
-            background: white;
+            background: #f2eedf;
+            border: none;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(15, 28, 26, 0.35);
             padding: 40px;
             max-width: 400px;
             width: 100%;
@@ -35,20 +37,32 @@
             margin-bottom: 30px;
         }
         .login-header h1 {
-            color: #193b36;
+            color: #244740;
             font-weight: bold;
         }
         .login-header p {
-            color: #7f8c8d;
+            color: rgba(15, 28, 26, 0.65);
+        }
+        .login-card .form-label { color: #0f1c1a; font-weight: 600; }
+        .login-card .form-control {
+            border: 1.5px solid rgba(36, 71, 64, 0.35);
+            background: #f2eedf;
+            color: #0f1c1a;
+        }
+        .login-card .form-control:focus {
+            border-color: #244740;
+            box-shadow: 0 0 0 3px rgba(36, 71, 64, 0.18);
         }
         .btn-login {
-            background: linear-gradient(135deg, #2e7d6b 0%, #193b36 100%);
+            background: #244740;
             border: none;
             padding: 12px;
             font-weight: bold;
+            color: #f2eedf;
         }
         .btn-login:hover {
-            background: linear-gradient(135deg, #193b36 0%, #2e7d6b 100%);
+            background: #0f1c1a;
+            color: #f2eedf;
         }
 
         @media (max-width: 480px) {
