@@ -30,16 +30,16 @@ if not exist "manage.py" (
 
 echo Options:
 echo.
-echo 1 - Install / Setup
-echo 2 - Update from GitHub
+echo 1 - Update from GitHub
+echo 2 - Install / Setup
 echo 3 - Add Menu Items (seed_menu)
 echo 4 - Run Project
 echo 5 - Exit
 echo.
 set /p choice="Choose option: "
 
-if "%choice%"=="1" goto install
-if "%choice%"=="2" goto update
+if "%choice%"=="1" goto update
+if "%choice%"=="2" goto install
 if "%choice%"=="3" goto seed_menu
 if "%choice%"=="4" goto run
 if "%choice%"=="5" goto end
@@ -63,7 +63,26 @@ powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -F
 del "alf_hana.zip" >nul 2>&1
 xcopy /E /I /Y "alf_hana-main\*" "." >nul
 rmdir /S /Q "alf_hana-main" >nul 2>&1
-echo Done! Now run option 1.
+echo Done! Now run option 2 (Install / Setup).
+pause
+goto main
+
+:update
+echo.
+echo Updating from GitHub...
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing"
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to download
+    pause
+    goto main
+)
+echo Downloaded!
+echo Extracting...
+powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -Force"
+del "alf_hana.zip" >nul 2>&1
+xcopy /E /I /Y "alf_hana-main\*" "." >nul
+rmdir /S /Q "alf_hana-main" >nul 2>&1
+echo Updated!
 pause
 goto main
 
@@ -117,25 +136,6 @@ if exist "core\management\commands\seed_menu.py" (
     echo ERROR: seed_menu command not found
     echo This file should be in core/management/commands/
 )
-pause
-goto main
-
-:update
-echo.
-echo Updating...
-powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing"
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to download
-    pause
-    goto main
-)
-echo Downloaded!
-echo Extracting...
-powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -Force"
-del "alf_hana.zip" >nul 2>&1
-xcopy /E /I /Y "alf_hana-main\*" "." >nul
-rmdir /S /Q "alf_hana-main" >nul 2>&1
-echo Updated!
 pause
 goto main
 

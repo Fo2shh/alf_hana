@@ -54,3 +54,6 @@ media/*
 menu_backups/*.json
 menu_backups/latest_backup.txt
 !menu_backups/.gitkeep
+
+# Local instruction files (Arabic)
+تعليمات_*.txt

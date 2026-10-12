@@ -30,8 +30,8 @@ if not exist "manage.py" (
 
 echo Options:
 echo.
-echo 1 - Install / Setup (First time only)
-echo 2 - Update from GitHub
+echo 1 - Update from GitHub
+echo 2 - Install / Setup (First time only)
 echo 3 - Add Menu Items (seed_menu)
 echo 4 - Run Project
 echo 5 - Open Browser
@@ -41,8 +41,8 @@ echo.
 
 set /p choice="Choose option (1-7): "
 
-if "%choice%"=="1" goto install
-if "%choice%"=="2" goto update
+if "%choice%"=="1" goto update
+if "%choice%"=="2" goto install
 if "%choice%"=="3" goto seed_menu
 if "%choice%"=="4" goto run
 if "%choice%"=="5" goto browser
@@ -107,7 +107,7 @@ echo ========================================
 echo SUCCESS: Project downloaded!
 echo ========================================
 echo.
-echo Now run option 1 (Install / Setup)
+echo Now run option 2 (Install / Setup)
 echo.
 timeout /t 2 >nul
 goto main
