@@ -7,23 +7,37 @@ from django.db.models.signals import post_save, post_delete
 class Command(BaseCommand):
     help = "استعادة المنيو والعملاء من آخر نسخة احتياطية"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--backup-file',
+            type=str,
+            help='اسم ملف النسخة الاحتياطية المحدد (بدون المسار الكامل)',
+        )
+
     def handle(self, *args, **options):
         # تعطيل الـ backup مؤقتاً لتجنب حلقة لا نهائية
         from core.models import set_backup_enabled
         set_backup_enabled(False)
 
         backup_dir = os.path.join(settings.BASE_DIR, 'menu_backups')
-        latest_file = os.path.join(backup_dir, 'latest_backup.txt')
 
-        if not os.path.exists(latest_file):
-            self.stdout.write(self.style.WARNING('لا توجد نسخة احتياطية'))
-            set_backup_enabled(True)
-            return
+        # إذا تم تحديد ملف محدد، استخدمه
+        if options['backup_file']:
+            filename = options['backup_file']
+            filepath = os.path.join(backup_dir, filename)
+        else:
+            # خلاف ذلك، استخدم آخر نسخة احتياطية
+            latest_file = os.path.join(backup_dir, 'latest_backup.txt')
 
-        with open(latest_file, 'r', encoding='utf-8') as f:
-            filename = f.read().strip()
+            if not os.path.exists(latest_file):
+                self.stdout.write(self.style.WARNING('لا توجد نسخة احتياطية'))
+                set_backup_enabled(True)
+                return
 
-        filepath = os.path.join(backup_dir, filename)
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                filename = f.read().strip()
+
+            filepath = os.path.join(backup_dir, filename)
 
         if not os.path.exists(filepath):
             self.stdout.write(self.style.ERROR(f'الملف {filename} غير موجود'))

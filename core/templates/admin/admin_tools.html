@@ -287,6 +287,24 @@
             </form>
         </div>
 
+        <!-- Restore from File -->
+        <div class="tool-card success">
+            <div class="tool-icon">📁</div>
+            <div class="tool-title">استيراد من ملف محلي</div>
+            <div class="tool-description">
+                استيراد المنيو والعملاء من ملف JSON من جهازك. مفيد عند تحديث المشروع.
+            </div>
+            <form method="post" action="{% url 'restore_from_file' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <input type="file" class="form-control form-control-sm" id="backup_file" name="backup_file" accept=".json">
+                </div>
+                <button type="submit" class="tool-btn btn-success">
+                    <i class="bi bi-upload"></i> استيراد الملف
+                </button>
+            </form>
+        </div>
+
         <!-- Delete All Data -->
         <div class="tool-card warning">
             <div class="tool-icon">🗑️</div>

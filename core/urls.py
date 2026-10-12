@@ -30,4 +30,5 @@ urlpatterns = [
     path('admin-tools/delete-all-data/', views_admin.delete_all_data, name='delete_all_data'),
     path('admin-tools/hard-reset/', views_admin.hard_reset_database, name='hard_reset_database'),
     path('admin-tools/seed-menu/', views_admin.seed_menu_now, name='seed_menu_now'),
+    path('admin-tools/restore-from-file/', views_admin.restore_from_file, name='restore_from_file'),
 ]

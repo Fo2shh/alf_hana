@@ -148,3 +148,43 @@ def seed_menu_now(request):
         except Exception as e:
             messages.error(request, f'فشل الاستيراد: {str(e)}')
     return redirect('admin_tools')
+
+
+@login_required
+@user_passes_test(is_admin)
+def restore_from_file(request):
+    """استعادة المنيو والعملاء من ملف محلي"""
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('backup_file')
+        if not uploaded_file:
+            messages.error(request, 'الرجاء اختيار ملف')
+            return redirect('admin_tools')
+
+        try:
+            import json
+            data = json.loads(uploaded_file.read().decode('utf-8'))
+
+            # حفظ الملف في مجلد menu_backups
+            backup_dir = os.path.join(settings.BASE_DIR, 'menu_backups')
+            os.makedirs(backup_dir, exist_ok=True)
+
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'menu_backup_{timestamp}.json'
+            filepath = os.path.join(backup_dir, filename)
+
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+
+            # تحديث ملف latest_backup
+            latest_file = os.path.join(backup_dir, 'latest_backup.txt')
+            with open(latest_file, 'w') as f:
+                f.write(filename)
+
+            # استدعاء أمر restore_menu مع اسم الملف
+            call_command('restore_menu', backup_file=filename)
+
+            messages.success(request, f'تم استعادة المنيو والعملاء من الملف: {filename}')
+        except Exception as e:
+            messages.error(request, f'فشل الاستعادة: {str(e)}')
+
+    return redirect('admin_tools')
