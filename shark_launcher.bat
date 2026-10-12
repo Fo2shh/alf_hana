@@ -220,12 +220,20 @@ if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
 )
 
+echo Running migrations first...
+python manage.py migrate >nul
+if errorlevel 1 (
+    echo ERROR: Failed to run migrations
+    pause
+    goto main
+)
+
 echo Adding menu items to database...
 python manage.py seed_menu
 if errorlevel 1 (
     echo.
     echo ERROR: Failed to add menu items
-    echo Make sure seed_menu.py exists in the project
+    echo Make sure seed_menu command exists in the project
     pause
     goto main
 )

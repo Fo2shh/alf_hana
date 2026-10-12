@@ -96,7 +96,16 @@ if not exist "manage.py" (
     goto main
 )
 if exist "venv\Scripts\activate.bat" call venv\Scripts\activate.bat
-if exist "seed_menu.py" (
+
+echo Running migrations first...
+python manage.py migrate >nul
+if errorlevel 1 (
+    echo ERROR: Failed to run migrations
+    pause
+    goto main
+)
+
+if exist "core\management\commands\seed_menu.py" (
     python manage.py seed_menu
     if errorlevel 1 (
         echo ERROR: Failed to add menu items
@@ -105,8 +114,8 @@ if exist "seed_menu.py" (
     )
     echo Menu items added successfully!
 ) else (
-    echo ERROR: seed_menu.py not found
-    echo This file should be in the project folder
+    echo ERROR: seed_menu command not found
+    echo This file should be in core/management/commands/
 )
 pause
 goto main
