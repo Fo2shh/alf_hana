@@ -152,7 +152,7 @@
     <div class="header">
         <div class="restaurant-name">{{ restaurant_name }}</div>
         <div class="order-number">طلب #{{ order.daily_serial }}</div>
-        <div class="date">{{ order.created_at|date:"Y-m-d h:i A" }}</div>
+        <div class="date">{{ order.created_at|date:"Y-m-d" }} {{ order_time }}</div>
     </div>
     
     <div class="section">

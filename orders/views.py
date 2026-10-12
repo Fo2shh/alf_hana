@@ -495,11 +495,17 @@ def order_print(request, pk):
         orders = orders.filter(driver=request.user)
     order = get_object_or_404(orders, pk=pk)
     items = list(order.items.all())
+    
+    # Format time in 12-hour format with AM/PM in English
+    import datetime
+    order_time = order.created_at.strftime('%I:%M %p')
+    
     context = {
         'order': order,
         'items': items,
         'has_discounts': any(item.discount_per_unit for item in items),
         'restaurant_name': 'الف هنا',
         'restaurant_phone': '01206622290',
+        'order_time': order_time,
     }
     return render(request, 'orders/order_print.html', context)
