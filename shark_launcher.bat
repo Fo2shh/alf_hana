@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 title Shark Kitchen Launcher
 
 cd /d "%~dp0"
@@ -64,7 +65,7 @@ pause
 echo Downloading project from GitHub...
 echo.
 
-powershell -Command "& { $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; Invoke-WebRequest -Uri $url -OutFile $output }"
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing"
 
 if %errorlevel% neq 0 (
     echo.
@@ -93,11 +94,11 @@ echo Extracted successfully!
 echo.
 
 echo Cleaning up...
-del "alf_hana.zip"
+del "alf_hana.zip" >nul 2>&1
 
 echo Moving files to current folder...
-xcopy /E /I /Y "alf_hana-main\*" "."
-rmdir /S /Q "alf_hana-main"
+xcopy /E /I /Y "alf_hana-main\*" "." >nul
+rmdir /S /Q "alf_hana-main" >nul 2>&1
 
 echo.
 echo ========================================
@@ -106,7 +107,7 @@ echo ========================================
 echo.
 echo Now run option 1 (Install / Setup)
 echo.
-pause
+timeout /t 2 >nul
 goto main
 
 :install
@@ -153,7 +154,7 @@ call venv\Scripts\activate.bat
 echo.
 
 echo Step 4: Installing packages...
-pip install -r requirements.txt
+pip install -r requirements.txt >nul
 if errorlevel 1 (
     echo ERROR: Failed to install packages
     pause
@@ -163,7 +164,7 @@ echo Packages installed
 echo.
 
 echo Step 5: Running migrations...
-python manage.py migrate
+python manage.py migrate >nul
 if errorlevel 1 (
     echo ERROR: Failed to run migrations
     pause
@@ -173,8 +174,8 @@ echo Migrations completed
 echo.
 
 echo Step 6: Collecting static files...
-if not exist "staticfiles" mkdir staticfiles
-python manage.py collectstatic --noinput
+if not exist "staticfiles" mkdir staticfiles >nul 2>&1
+python manage.py collectstatic --noinput >nul 2>&1
 echo Static files collected
 echo.
 
@@ -196,7 +197,7 @@ echo   - Admin   : admin / admin123
 echo   - Kitchen : kitchen / kitchen123
 echo   - Driver  : driver1 / driver123
 echo.
-pause
+timeout /t 2 >nul
 goto main
 
 :update
@@ -220,7 +221,7 @@ if exist ".git" (
         echo Attempting to clean untracked files and retry...
         echo.
 
-        git clean -df
+        git clean -df >nul 2>&1
         git pull
 
         if %errorlevel% equ 0 (
@@ -237,7 +238,7 @@ if exist ".git" (
     echo Downloading fresh copy from GitHub...
     echo.
 
-    powershell -Command "& { $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; Invoke-WebRequest -Uri $url -OutFile $output }"
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/Fo2shh/alf_hana/archive/refs/heads/main.zip'; $output = 'alf_hana.zip'; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing"
 
     if %errorlevel% neq 0 (
         echo.
@@ -264,17 +265,17 @@ if exist ".git" (
     echo.
 
     echo Cleaning up...
-    del "alf_hana.zip"
+    del "alf_hana.zip" >nul 2>&1
 
     echo Moving files to current folder...
-    xcopy /E /I /Y "alf_hana-main\*" "."
-    rmdir /S /Q "alf_hana-main"
+    xcopy /E /I /Y "alf_hana-main\*" "." >nul
+    rmdir /S /Q "alf_hana-main" >nul 2>&1
 
     echo.
     echo SUCCESS: Project updated from GitHub!
 )
 echo.
-pause
+timeout /t 2 >nul
 goto main
 
 :run
@@ -304,6 +305,7 @@ pause
 echo.
 echo Stopping server...
 taskkill /F /IM python.exe >nul 2>&1
+timeout /t 1 >nul
 goto main
 
 :browser
