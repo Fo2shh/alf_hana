@@ -23,7 +23,7 @@
                     
                     <div class="mb-3">
                         <label for="phone" class="form-label">رقم الهاتف</label>
-                        <input type="text" class="form-control" id="phone" name="phone" value="{% if customer %}{{ customer.phone }}{% endif %}" required>
+                        <input type="text" class="form-control" id="phone" name="phone" value="{% if customer %}{{ customer.phone }}{% endif %}" required maxlength="11" pattern="[0-9]{11}" title="رقم الهاتف يجب أن يكون 11 رقم">
                     </div>
                     
                     <div class="mb-3">

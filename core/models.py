@@ -67,7 +67,7 @@ class MenuItem(models.Model):
 class Customer(models.Model):
     """العملاء"""
     name = models.CharField(max_length=200, verbose_name='اسم العميل')
-    phone = models.CharField(max_length=20, unique=True, verbose_name='رقم الهاتف')
+    phone = models.CharField(max_length=11, unique=True, verbose_name='رقم الهاتف')
     address = models.TextField(verbose_name='العنوان')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, verbose_name='خط العرض')
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, verbose_name='خط الطول')

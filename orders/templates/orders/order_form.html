@@ -57,7 +57,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">رقم الهاتف</label>
-                        <input type="text" class="form-control" id="customerPhone" name="customer_phone">
+                        <input type="text" class="form-control" id="customerPhone" name="customer_phone" maxlength="11" pattern="[0-9]{11}" title="رقم الهاتف يجب أن يكون 11 رقم">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">العنوان</label>
@@ -915,6 +915,11 @@
             }
             if (!phone) {
                 alert('يرجى إدخال رقم هاتف العميل الجديد');
+                document.getElementById('customerPhone').focus();
+                return;
+            }
+            if (!/^\d{11}$/.test(phone)) {
+                alert('رقم الهاتف يجب أن يكون 11 رقم');
                 document.getElementById('customerPhone').focus();
                 return;
             }
