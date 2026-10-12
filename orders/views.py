@@ -500,6 +500,6 @@ def order_print(request, pk):
         'items': items,
         'has_discounts': any(item.discount_per_unit for item in items),
         'restaurant_name': 'الف هنا',
-        'restaurant_phone': '0500000000',  # يمكن تعديله
+        'restaurant_phone': '01206622290',
     }
     return render(request, 'orders/order_print.html', context)
