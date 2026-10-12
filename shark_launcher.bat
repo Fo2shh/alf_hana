@@ -83,7 +83,7 @@ echo.
 echo Extracting files...
 echo.
 
-powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -Force"
+powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath 'temp_update' -Force"
 
 if %errorlevel% neq 0 (
     echo.
@@ -99,8 +99,8 @@ echo Cleaning up...
 del "alf_hana.zip" >nul 2>&1
 
 echo Moving files to current folder...
-xcopy /E /I /Y "alf_hana-main\*" "." >nul
-rmdir /S /Q "alf_hana-main" >nul 2>&1
+xcopy /E /I /Y "temp_update\alf_hana-main\*" "." >nul
+rmdir /S /Q "temp_update" >nul 2>&1
 
 echo.
 echo ========================================
@@ -298,7 +298,7 @@ if exist ".git" (
     echo.
 
     echo Extracting files...
-    powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -Force"
+    powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath 'temp_update' -Force"
 
     if %errorlevel% neq 0 (
         echo.
@@ -314,8 +314,8 @@ if exist ".git" (
     del "alf_hana.zip" >nul 2>&1
 
     echo Moving files to current folder...
-    xcopy /E /I /Y "alf_hana-main\*" "." >nul
-    rmdir /S /Q "alf_hana-main" >nul 2>&1
+    xcopy /E /I /Y "temp_update\alf_hana-main\*" "." >nul
+    rmdir /S /Q "temp_update" >nul 2>&1
 
     echo.
     echo SUCCESS: Project updated from GitHub!

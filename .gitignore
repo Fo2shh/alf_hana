@@ -57,3 +57,8 @@ menu_backups/latest_backup.txt
 
 # Local instruction files (Arabic)
 تعليمات_*.txt
+
+# Temporary update folders
+temp_update/
+alf_hana.zip
+alf_hana-main/

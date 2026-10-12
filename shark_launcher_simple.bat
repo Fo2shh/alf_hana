@@ -78,10 +78,10 @@ if %errorlevel% neq 0 (
 )
 echo Downloaded!
 echo Extracting...
-powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath '.' -Force"
+powershell -Command "Expand-Archive -Path 'alf_hana.zip' -DestinationPath 'temp_update' -Force"
 del "alf_hana.zip" >nul 2>&1
-xcopy /E /I /Y "alf_hana-main\*" "." >nul
-rmdir /S /Q "alf_hana-main" >nul 2>&1
+xcopy /E /I /Y "temp_update\alf_hana-main\*" "." >nul
+rmdir /S /Q "temp_update" >nul 2>&1
 echo Updated!
 pause
 goto main
