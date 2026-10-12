@@ -55,13 +55,60 @@ goto main
 :update
 echo.
 echo Checking for updates...
-git pull
-if %errorlevel% equ 0 (
+echo.
+
+if exist ".git" (
+    echo Git repository found, pulling changes...
     echo.
-    echo SUCCESS: Updated successfully!
+
+    git pull
+    if %errorlevel% equ 0 (
+        echo.
+        echo SUCCESS: Updated successfully!
+    ) else (
+        echo.
+        echo WARNING: Update failed due to untracked files
+        echo Attempting to clean untracked files and retry...
+        echo.
+
+        git clean -df
+        git pull
+
+        if %errorlevel% equ 0 (
+            echo.
+            echo SUCCESS: Updated successfully after cleaning!
+        ) else (
+            echo.
+            echo ERROR: Update failed even after cleaning
+            echo Manual intervention may be required
+        )
+    )
 ) else (
+    echo No Git repository found.
+    echo Initializing Git and pulling from GitHub...
     echo.
-    echo ERROR: Update failed
+
+    git init
+    if errorlevel 1 (
+        echo ERROR: Git is not installed
+        pause
+        goto main
+    )
+
+    git remote add origin git@github.com:Fo2shh/alf_hana.git
+    git fetch origin
+    git checkout -b main
+    git branch --set-upstream-to=origin/main main
+    git pull origin main
+
+    if %errorlevel% equ 0 (
+        echo.
+        echo SUCCESS: Project cloned and updated successfully!
+    ) else (
+        echo.
+        echo ERROR: Failed to pull from GitHub
+        echo Make sure you have SSH keys configured for GitHub
+    )
 )
 echo.
 pause
