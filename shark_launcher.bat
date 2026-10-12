@@ -32,20 +32,22 @@ echo Options:
 echo.
 echo 1 - Install / Setup (First time only)
 echo 2 - Update from GitHub
-echo 3 - Run Project
-echo 4 - Open Browser
-echo 5 - Create Admin Users
-echo 6 - Exit
+echo 3 - Add Menu Items (seed_menu)
+echo 4 - Run Project
+echo 5 - Open Browser
+echo 6 - Create Admin Users
+echo 7 - Exit
 echo.
 
-set /p choice="Choose option (1-6): "
+set /p choice="Choose option (1-7): "
 
 if "%choice%"=="1" goto install
 if "%choice%"=="2" goto update
-if "%choice%"=="3" goto run
-if "%choice%"=="4" goto browser
-if "%choice%"=="5" goto create_users
-if "%choice%"=="6" goto end
+if "%choice%"=="3" goto seed_menu
+if "%choice%"=="4" goto run
+if "%choice%"=="5" goto browser
+if "%choice%"=="6" goto create_users
+if "%choice%"=="7" goto end
 
 echo Invalid option!
 pause
@@ -196,6 +198,42 @@ echo Login credentials:
 echo   - Admin   : admin / admin123
 echo   - Kitchen : kitchen / kitchen123
 echo   - Driver  : driver1 / driver123
+echo.
+timeout /t 2 >nul
+goto main
+
+:seed_menu
+echo.
+echo ========================================
+echo   Add Menu Items
+echo ========================================
+echo.
+
+if not exist "manage.py" (
+    echo ERROR: manage.py not found
+    echo Please install the project first (option 1)
+    pause
+    goto main
+)
+
+if exist "venv\Scripts\activate.bat" (
+    call venv\Scripts\activate.bat
+)
+
+echo Adding menu items to database...
+python manage.py seed_menu
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to add menu items
+    echo Make sure seed_menu.py exists in the project
+    pause
+    goto main
+)
+
+echo.
+echo ========================================
+echo SUCCESS: Menu items added!
+echo ========================================
 echo.
 timeout /t 2 >nul
 goto main
