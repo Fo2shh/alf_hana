@@ -43,12 +43,10 @@ goto main
 :install
 echo.
 echo Running setup...
-if exist "startfresh.bat" (
-    call "%~dp0startfresh.bat"
-) else if exist "setup.bat" (
+if exist "setup.bat" (
     call "%~dp0setup.bat"
 ) else (
-    echo ERROR: Neither startfresh.bat nor setup.bat found
+    echo ERROR: setup.bat not found
     echo.
     pause
 )
@@ -56,80 +54,14 @@ goto main
 
 :update
 echo.
-echo ========================================
-echo   Updating from GitHub
-echo ========================================
-echo.
-
-if exist ".git" (
-    echo Git repository found, pulling changes...
+echo Checking for updates...
+git pull
+if %errorlevel% equ 0 (
     echo.
-    git pull origin main
-    if %errorlevel% equ 0 (
-        echo.
-        echo ========================================
-        echo   SUCCESS: Updated successfully!
-        echo ========================================
-    ) else (
-        echo.
-        echo ========================================
-        echo   WARNING: Update had conflicts
-        echo ========================================
-        echo.
-        echo Trying automatic merge...
-        git pull origin main --no-edit
-        if %errorlevel% equ 0 (
-            echo.
-            echo SUCCESS: Resolved automatically
-        ) else (
-            echo.
-            echo ERROR: Could not resolve conflicts
-            echo Your local changes may be lost
-            echo.
-            set /p force="Force update from GitHub? [Y/N]: "
-            if /i "!force!"=="Y" (
-                echo Forcing update...
-                git reset --hard origin/main
-                echo Updated successfully
-            )
-        )
-    )
+    echo SUCCESS: Updated successfully!
 ) else (
-    echo No Git repository found.
-    echo Setting up Git for first time...
     echo.
-
-    git init
-    if errorlevel 1 (
-        echo ERROR: Git is not installed
-        echo Please install Git from: https://git-scm.com/
-        pause
-        goto main
-    )
-
-    echo Adding GitHub repository...
-    git remote add origin https://github.com/Fo2shh/alf_hana.git
-
-    echo Fetching updates...
-    git fetch origin
-
-    echo Setting up main branch...
-    git checkout -b main
-    git branch --set-upstream-to=origin/main main
-
-    echo Pulling latest changes...
-    git pull origin main --no-edit
-
-    if %errorlevel% equ 0 (
-        echo.
-        echo ========================================
-        echo   SUCCESS: Project updated!
-        echo ========================================
-    ) else (
-        echo.
-        echo ERROR: Failed to update
-        echo Please check your internet connection
-    )
+    echo ERROR: Update failed
 )
 echo.
 pause
